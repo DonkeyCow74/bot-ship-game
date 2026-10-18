@@ -58,8 +58,14 @@ function think(view, memory) {
   // Raising the shield costs a big chunk of energy, so only do it for a real threat
   const danger = view.bullets.find((b) => !b.mine && bulletThreat(b, me, 0.3));
   if (danger && me.energy > K.SHIELD_MIN_ENERGY) out.shield = shieldSideFor(me, danger) || false;
-  // A shot from the side can't be shielded: dash out of the way instead
-  if (danger && !out.shield && me.dashCooldown === 0 && me.energy > K.DASH_COST) out.dash = true;
+  // A shot from the side can't be shielded: dash sideways out of its path instead
+  if (danger && !out.shield && me.dashCooldown === 0 && me.energy > K.DASH_COST) {
+    const path = Math.atan2(danger.vy - me.vy, danger.vx - me.vx);
+    const away = [path + Math.PI / 2, path - Math.PI / 2];
+    // Pick the side we're already on, so we move further from the bullet's line
+    const dx = me.x - danger.x, dy = me.y - danger.y;
+    out.dash = Math.cos(away[0]) * dx + Math.sin(away[0]) * dy > 0 ? away[0] : away[1];
+  }
 
   if (target) {
     const d = distance(me, target);
@@ -69,18 +75,18 @@ function think(view, memory) {
     out.turn = turnToward(me, aimAngle);
     out.thrust = err < 0.6 ? (d > 600 ? 1 : d > 350 ? 0.4 : 0) : 0;
 
-    // Brawl: if they're close and we have energy, ram in with the saw spinning
+    // Brawl: if they're close, ease in and hit them with the saw
     const facing = Math.abs(angleDiff(me.angle, angleTo(me, target))) < 0.5;
     if (d < 260 && me.energy > 30) {
       out.turn = turnToward(me, angleTo(me, target));
       // Ease in (don't crash into them, that hurts us too) and stay inside the blade's reach
       const closing = ((target.vx - me.vx) * (me.x - target.x) + (target.vy - me.vy) * (me.y - target.y)) / d;
-      out.thrust = facing && d > 55 && closing < 120 ? 0.5 : 0;
-      out.saw = facing && d < 80;
+      out.thrust = facing && d > 65 && closing < 120 ? 0.5 : 0;
+      out.saw = facing && d < 80; // reach is about 80 px center to center
     }
     // Dash to close the gap on a far-off, lined-up target (from far enough away that we
     // slow down before reaching them: crashing at dash speed hurts us as much as them)
-    if (facing && d > 700 && d < 1100 && me.dashCooldown === 0 && me.energy > 70) out.dash = true;
+    if (facing && d > 700 && d < 1100 && me.dashCooldown === 0 && me.energy > 70) out.dash = 'forward';
     const clear = lineOfSight(view, me, aim);
     const tolerance = 0.05 + 25 / d;
     out.fire = !out.shield && clear && err < tolerance && d < K.BULLET_RANGE * 0.85 &&

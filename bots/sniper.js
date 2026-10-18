@@ -78,8 +78,9 @@ function think(view, memory) {
     const blocked = target.shieldOn && shieldSideFor(target, me) === target.shieldSide;
     out.fire = !out.shield && !blocked && err < 0.03 + 12 / d &&
       lineOfSight(view, me, aim) && d < K.BULLET_RANGE * 0.9 && me.energy > 20;
-    // Someone right on top of us: spin the saw at them
-    if (d < 90 && err < 0.5) out.saw = true;
+    // Someone right on top of us: saw them away, or dash backward out of reach
+    if (d < 80 && err < 0.5) out.saw = true;
+    else if (d < 250 && me.dashCooldown === 0 && me.energy > 40) out.dash = 'back';
     out.debug.push({ type: 'line', x: me.x, y: me.y, x2: aim.x, y2: aim.y, color: '#5cc8ff' });
     out.debug.push({ type: 'text', x: me.x, y: me.y - 40, text: hurt ? 'hiding' : 'sniping', color: '#5cc8ff' });
   } else {

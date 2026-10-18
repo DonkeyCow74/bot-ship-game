@@ -156,60 +156,81 @@ test('shield needs enough energy to raise', () => {
   assert.equal(me.shieldSide, 'front');
 });
 
-test('saw hurts a ship in front, drains energy, and grinds asteroids', () => {
+test('saw strike: chunk of damage, knocks the target away, costs energy, has a cooldown', () => {
   const w = emptyWorld();
   const [me, them] = w.ships;
   me.x = 1000; me.y = 1000; me.angle = 0; me.vx = me.vy = 0;
-  them.x = 1000 + C.SHIP_RADIUS * 2 + 4; them.y = 1000; them.vx = them.vy = 0;
-  for (let i = 0; i < 30; i++) {
-    them.x = 1000 + C.SHIP_RADIUS * 2 + 4; them.vx = 0; // hold them in place
-    step(w, [{ saw: true }, null]);
-  }
-  assert.ok(Math.abs(them.hp - (C.SHIP_HP - C.SAW_DPS)) < 2, `took ${C.SHIP_HP - them.hp}`);
-  assert.ok(Math.abs(me.energy - (C.SHIP_ENERGY - C.SAW_DRAIN)) < 1, 'drained, no regen');
+  them.x = 1000 + C.SHIP_RADIUS * 2 + 10; them.y = 1000; them.vx = them.vy = 0;
+  step(w, [{ saw: true }, null]);
+  assert.equal(them.hp, C.SHIP_HP - C.SAW_DAMAGE);
+  assert.ok(them.vx > C.SAW_KNOCKBACK * 0.8, 'knocked away'); // eases back to top speed after
+  assert.ok(me.vx < 0, 'recoil');
+  assert.ok(me.energy < C.SHIP_ENERGY - C.SAW_COST + 1);
   assert.equal(them.lastHitBy, 0);
-
-  // Out of reach: no damage
-  them.x = 1300;
-  const hp = them.hp;
-  for (let i = 0; i < 10; i++) step(w, [{ saw: true }, null]);
-  assert.equal(them.hp, hp);
-
-  // Grinding an asteroid counts as hits
-  w.ships[1].x = 5000;
+  // Cooldown: an immediate second strike does nothing
+  them.x = 1000 + C.SHIP_RADIUS * 2 + 10; them.vx = 0; me.x = 1000; me.vx = 0;
+  step(w, [{ saw: true }, null]);
+  assert.equal(them.hp, C.SHIP_HP - C.SAW_DAMAGE);
+  // Out of reach: misses
+  for (let i = 0; i < C.SAW_COOLDOWN_TICKS; i++) step(w, idle(2));
+  them.x = 1300; them.vx = 0; me.x = 1000; me.vx = 0;
+  step(w, [{ saw: true }, null]);
+  assert.equal(them.hp, C.SHIP_HP - C.SAW_DAMAGE);
+  // Asteroids take a hit
+  for (let i = 0; i < C.SAW_COOLDOWN_TICKS; i++) step(w, idle(2));
+  them.x = 5000;
+  me.x = 1000; me.vx = 0;
   const a = createAsteroid(w, 2, 1000 + C.SHIP_RADIUS + C.ASTEROID_RADII[2] + 2, 1000, 0, 0);
-  for (let i = 0; i < 25; i++) { me.x = 1000; me.vx = 0; step(w, [{ saw: true }, null]); }
-  assert.ok(a.hitsLeft < C.ASTEROID_HITS);
+  step(w, [{ saw: true }, null]);
+  assert.equal(a.hitsLeft, C.ASTEROID_HITS - 1);
 });
 
-test('front shield blocks a saw', () => {
+test('front shield blocks saw damage (but still gets shoved)', () => {
   const w = emptyWorld();
   const [me, them] = w.ships;
   me.x = 1000; me.y = 1000; me.angle = 0;
-  them.x = 1000 + C.SHIP_RADIUS * 2 + 4; them.y = 1000; them.angle = Math.PI; // facing me
-  for (let i = 0; i < 15; i++) {
-    them.x = 1000 + C.SHIP_RADIUS * 2 + 4; them.vx = 0; me.x = 1000; me.vx = 0;
-    step(w, [{ saw: true }, { shield: 'front' }]);
-  }
+  them.x = 1000 + C.SHIP_RADIUS * 2 + 10; them.y = 1000; them.angle = Math.PI; // facing me
+  step(w, [null, { shield: 'front' }]);
+  them.x = 1000 + C.SHIP_RADIUS * 2 + 10; them.vx = 0; me.x = 1000; me.vx = 0;
+  step(w, [{ saw: true }, { shield: 'front' }]);
   assert.equal(them.hp, C.SHIP_HP);
   assert.ok(them.stats.blocked > 0);
+  assert.ok(them.vx > 0);
 });
 
-test('dash bursts forward, costs energy, then cools down', () => {
+test('dash goes any direction, costs energy, then cools down', () => {
   const w = emptyWorld();
   const me = w.ships[0];
   me.x = 3000; me.y = 3000; me.angle = 0; me.vx = me.vy = 0;
-  step(w, [{ dash: true }, null]);
+  step(w, [{ dash: true }, null]); // true = forward
   assert.ok(me.vx > C.DASH_SPEED * 0.95, `vx ${me.vx}`);
   assert.ok(me.energy < C.SHIP_ENERGY - C.DASH_COST + 1);
   const e = me.energy;
-  step(w, [{ dash: true }, null]); // still cooling down: nothing happens
+  step(w, [{ dash: 'back' }, null]); // still cooling down: nothing happens
   assert.ok(me.energy >= e);
   for (let i = 0; i < C.DASH_TICKS + 30; i++) step(w, idle(2));
   assert.ok(Math.hypot(me.vx, me.vy) <= me.maxSpeed + 1, 'back to normal top speed');
-  for (let i = 0; i < C.DASH_COOLDOWN_TICKS; i++) step(w, idle(2));
-  step(w, [{ dash: true }, null]);
-  assert.ok(me.vx > C.DASH_SPEED * 0.95, 'can dash again');
+  const dashFrom = (dash, angle = 0) => {
+    for (let i = 0; i < C.DASH_COOLDOWN_TICKS; i++) step(w, idle(2));
+    me.x = 3000; me.y = 3000; me.vx = me.vy = 0; me.angle = angle; me.energy = 100;
+    step(w, [{ dash }, null]);
+    return [me.vx, me.vy];
+  };
+  let [vx, vy] = dashFrom('back');
+  assert.ok(vx < -C.DASH_SPEED * 0.95 && Math.abs(vy) < 1, 'back');
+  [vx, vy] = dashFrom('right'); // right of a ship facing +x is +y (down) on screen
+  assert.ok(vy > C.DASH_SPEED * 0.95 && Math.abs(vx) < 1, 'right');
+  [vx, vy] = dashFrom('left');
+  assert.ok(vy < -C.DASH_SPEED * 0.95, 'left');
+  [vx, vy] = dashFrom(Math.PI / 4, 2); // a map angle ignores which way we face
+  assert.ok(vx > 500 && vy > 500, 'angle');
+});
+
+test('dash commands survive replay encoding', () => {
+  for (const dash of [false, 'forward', 'back', 'left', 'right', 1.234, -3]) {
+    const c = sanitizeCommand({ dash, saw: true });
+    assert.deepEqual(decodeCommand(encodeCommand(c)), c);
+  }
 });
 
 test('pig zone stays clear of asteroids', () => {

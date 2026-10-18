@@ -19,9 +19,11 @@ export function createShip(id, entry, x, y, angle) {
     bombCooldown: 0,
     shieldOn: false,
     shieldSide: null,          // 'front' | 'back' while the shield is up
-    sawOn: false,
+    sawCooldown: 0,
+    sawTicks: 0,               // > 0 right after a strike (for drawing)
     dashTicks: 0,              // > 0 while dashing
     dashCooldown: 0,
+    dashAngle: 0,              // direction of the last dash
     alive: true,
     upgrades: { hp: 0, energy: 0, speed: 0 },
     lastCmd: null,
@@ -52,9 +54,6 @@ export function controlShip(ship, cmd) {
     ship.shieldSide = null;
   }
 
-  // No sawing from behind a shield
-  ship.sawOn = cmd.saw && !ship.shieldOn && ship.energy > 0;
-
   const cos = Math.cos(ship.angle), sin = Math.sin(ship.angle);
   if (cmd.thrust > 0) {
     const a = ship.thrustAccel * cmd.thrust * dt;
@@ -62,17 +61,20 @@ export function controlShip(ship, cmd) {
     ship.vy += sin * a;
   }
 
-  // Dash: bring our forward speed up to DASH_SPEED (sideways drift is kept)
+  // Dash: bring our speed in the dash direction up to DASH_SPEED (other drift is kept)
   if (ship.dashTicks > 0) ship.dashTicks--;
   if (ship.dashCooldown > 0) ship.dashCooldown--;
-  if (cmd.dash && ship.dashCooldown <= 0 && ship.energy >= C.DASH_COST) {
+  if (cmd.dash !== false && ship.dashCooldown <= 0 && ship.energy >= C.DASH_COST) {
+    const dir = dashAngle(ship, cmd.dash);
+    const dx = Math.cos(dir), dy = Math.sin(dir);
     ship.energy -= C.DASH_COST;
     ship.dashTicks = C.DASH_TICKS;
     ship.dashCooldown = C.DASH_COOLDOWN_TICKS;
-    const forward = ship.vx * cos + ship.vy * sin;
-    if (forward < C.DASH_SPEED) {
-      ship.vx += cos * (C.DASH_SPEED - forward);
-      ship.vy += sin * (C.DASH_SPEED - forward);
+    ship.dashAngle = dir;
+    const along = ship.vx * dx + ship.vy * dy;
+    if (along < C.DASH_SPEED) {
+      ship.vx += dx * (C.DASH_SPEED - along);
+      ship.vy += dy * (C.DASH_SPEED - along);
     }
   }
 
@@ -95,14 +97,21 @@ export function controlShip(ship, cmd) {
       ship.shieldOn = false;
       ship.shieldSide = null;
     }
-  } else if (ship.sawOn) {
-    ship.energy = Math.max(0, ship.energy - C.SAW_DRAIN * dt);
   } else {
     ship.energy = Math.min(ship.maxEnergy, ship.energy + C.ENERGY_REGEN * dt);
   }
 
   if (ship.gunCooldown > 0) ship.gunCooldown--;
   if (ship.bombCooldown > 0) ship.bombCooldown--;
+  if (ship.sawCooldown > 0) ship.sawCooldown--;
+  if (ship.sawTicks > 0) ship.sawTicks--;
+}
+
+// 'forward' | 'back' | 'left' | 'right' are relative to the nose; a number is a map angle.
+// (Left = counter-clockwise on screen, right = clockwise.)
+export function dashAngle(ship, dash) {
+  if (typeof dash === 'number') return dash;
+  return ship.angle + ({ back: Math.PI, left: -Math.PI / 2, right: Math.PI / 2 }[dash] || 0);
 }
 
 // Is a hit coming from point (fx, fy) inside the ship's shield arc?

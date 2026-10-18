@@ -86,7 +86,8 @@ const cleanCmd = (c) => {
     turn: Number(c.turn) || 0,
     fire: !!c.fire, bomb: !!c.bomb,
     shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false,
-    saw: !!c.saw, dash: !!c.dash,
+    saw: !!c.saw,
+    dash: typeof c.dash === 'number' || typeof c.dash === 'string' ? c.dash : !!c.dash,
     pigStat: typeof c.pigStat === 'string' ? c.pigStat : 'hp',
     debug: cleanDebug(c.debug),
   };

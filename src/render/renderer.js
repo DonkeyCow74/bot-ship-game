@@ -289,7 +289,7 @@ export class Renderer {
       g.closePath();
       g.fill();
       g.stroke();
-      if (s.sawOn) this.drawSaw(g, z, k);
+      this.drawSaw(g, z, k, s);
       g.restore();
 
       if (s.shieldOn) {
@@ -323,25 +323,37 @@ export class Renderer {
     }
   }
 
-  // Called inside the ship's rotated/scaled transform (nose points along +x)
-  drawSaw(g, z, k) {
+  // Called inside the ship's rotated/scaled transform (nose points along +x).
+  // Idle: a small blade tucked on the nose. Striking: it shoots out big, spinning, with a swipe.
+  drawSaw(g, z, k, ship) {
     const R = C.SHIP_RADIUS;
-    const cx = R + C.SAW_REACH, r = C.SAW_RADIUS;
-    const spin = performance.now() / 40;
+    const striking = ship.sawTicks > 0;
+    const p = striking ? ship.sawTicks / C.SAW_SHOW_TICKS : 0; // 1 -> 0 over the swing
+    const r = striking ? C.SAW_RADIUS : C.SAW_RADIUS * 0.45;
+    const cx = striking ? R + C.SAW_REACH : R + 2;
     g.save();
+    if (striking) {
+      // Swipe arc around the blade
+      g.strokeStyle = `rgba(255, 220, 140, ${0.9 * p})`;
+      g.lineWidth = 5 / z / k;
+      g.beginPath();
+      g.arc(cx, 0, r + 8, -Math.PI * 0.8 + (1 - p) * 2, Math.PI * 0.3 + (1 - p) * 2);
+      g.stroke();
+    }
     g.translate(cx, 0);
-    g.rotate(spin);
+    g.rotate(performance.now() / (striking ? 25 : 300));
+    g.globalAlpha = striking || ship.sawCooldown === 0 ? 1 : 0.45;
     g.beginPath();
     const teeth = 10;
     for (let i = 0; i < teeth * 2; i++) {
       const a = (i / (teeth * 2)) * TAU;
-      const rr = i % 2 ? r * 0.72 : r;
+      const rr = i % 2 ? r * 0.7 : r;
       g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
     }
     g.closePath();
-    g.fillStyle = '#c9ced9';
+    g.fillStyle = striking ? '#f2f5ff' : '#c9ced9';
     g.fill();
-    g.strokeStyle = '#5b6070';
+    g.strokeStyle = '#4b5060';
     g.lineWidth = 1.5 / z / k;
     g.stroke();
     g.fillStyle = '#3a3e4a';

@@ -1,11 +1,12 @@
 import { C, PIG_STATS } from './constants.js';
+import { wrapAngle } from './vec.js';
 import { controlShip } from './ship.js';
 import { moveAsteroids } from './asteroid.js';
 import { tryFire, updateBullets } from './projectile.js';
 import { tryDropBomb, updateBombs } from './bomb.js';
 import { updatePig } from './pig.js';
 import { moveShips, collideShips } from './collision.js';
-import { updateSaws } from './saw.js';
+import { trySaw } from './saw.js';
 
 export { createWorld } from './world.js';
 export { getView, hasLineOfSight } from './vision.js';
@@ -29,27 +30,43 @@ export function sanitizeCommand(c) {
     bomb: !!c.bomb,
     shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false, // true = 'front'
     saw: !!c.saw,
-    dash: !!c.dash,
+    dash: sanitizeDash(c.dash),
     pigStat: PIG_STATS.includes(c.pigStat) ? c.pigStat : 'hp',
   };
 }
 
 const SHIELDS = [false, 'front', 'back'];
 
-// Compact form for replays: [thrust, turn, flags]
+const DASH_DIRS = ['forward', 'back', 'left', 'right'];
+
+// dash: true/'forward'/'back'/'left'/'right', or a number (map angle in radians)
+function sanitizeDash(d) {
+  if (d === true) return 'forward';
+  if (DASH_DIRS.includes(d)) return d;
+  if (typeof d === 'number' && Number.isFinite(d)) return Math.round(wrapAngle(d) * 1000) / 1000;
+  return false;
+}
+
+// Compact form for replays: [thrust, turn, flags, dashAngle?]
 export function encodeCommand(c) {
   const flags = (c.fire ? 1 : 0) | (c.bomb ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4) |
-    (c.saw ? 64 : 0) | (c.dash ? 128 : 0);
-  return [c.thrust, c.turn, flags];
+    (c.saw ? 64 : 0) | (dashCode(c.dash) << 7);
+  return typeof c.dash === 'number' ? [c.thrust, c.turn, flags, c.dash] : [c.thrust, c.turn, flags];
+}
+
+function dashCode(d) {
+  if (d === false) return 0;
+  return typeof d === 'number' ? 5 : DASH_DIRS.indexOf(d) + 1;
 }
 
 export function decodeCommand(e) {
   if (!e) return IDLE;
-  const [thrust, turn, flags] = e;
+  const [thrust, turn, flags, angle] = e;
+  const dash = (flags >> 7) & 7;
   return {
     thrust, turn,
     fire: !!(flags & 1), bomb: !!(flags & 2), shield: SHIELDS[(flags >> 2) & 3] || false,
-    saw: !!(flags & 64), dash: !!(flags & 128),
+    saw: !!(flags & 64), dash: dash === 5 ? angle : dash ? DASH_DIRS[dash - 1] : false,
     pigStat: PIG_STATS[(flags >> 4) & 3] || 'hp',
   };
 }
@@ -68,13 +85,13 @@ export function step(world, commands) {
     controlShip(s, cmd);
     if (cmd.fire) tryFire(world, s);
     if (cmd.bomb) tryDropBomb(world, s);
-    if (s.dashTicks === C.DASH_TICKS) world.events.push({ type: 'dash', x: s.x, y: s.y, ship: s.id, angle: s.angle });
+    if (cmd.saw) trySaw(world, s);
+    if (s.dashTicks === C.DASH_TICKS) world.events.push({ type: 'dash', x: s.x, y: s.y, ship: s.id, angle: s.dashAngle });
   }
 
   moveShips(world);
   moveAsteroids(world);
   collideShips(world);
-  updateSaws(world);
   updateBullets(world);
   updateBombs(world);
   updatePig(world, cmds);
@@ -86,7 +103,6 @@ export function step(world, commands) {
     s.alive = false;
     s.shieldOn = false;
     s.shieldSide = null;
-    s.sawOn = false;
     s.diedAt = world.tick;
     // Credit whoever hit them last within 5 seconds (covers being knocked into rocks)
     const killer = s.lastHitBy >= 0 && world.tick - s.lastHitTick <= 150 ? s.lastHitBy : -1;
