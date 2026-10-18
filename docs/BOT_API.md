@@ -203,9 +203,9 @@ debug: [
 - They drift, spin, bounce off walls and each other, and block line of sight.
 
 ### The pig 🐷
-- A pig appears in the middle of the map at the start, inside an open circle (700 px radius) where asteroids can't go. There's nowhere to hide while you go for it.
+- A pig appears in the middle of the map, inside an open circle (700 px radius) where asteroids can't go. There's nowhere to hide while you go for it.
 - Touch it to eat it and gain **+40 max HP** (and heal 40), **+40 max energy**, or **+40% speed** (top speed and engine power). Pick with `pigStat`.
-- **A new pig appears 60 seconds after the last one was eaten.** Upgrades stack.
+- **The first pig appears 10 seconds into the match, and a new one appears 30 seconds after each is eaten.** Upgrades stack.
 
 ### Winning
 - The last ship flying wins.

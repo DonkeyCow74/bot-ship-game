@@ -312,7 +312,7 @@ test('pig zone stays clear of asteroids', () => {
   }
 });
 
-test('pig gives the chosen upgrade once, then respawns after 60 s', () => {
+test('pig gives the chosen upgrade once, then respawns after 30 s', () => {
   const w = emptyWorld();
   w.maxTicks = 99999;
   const [me, them] = w.ships;

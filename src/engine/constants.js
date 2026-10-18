@@ -95,7 +95,8 @@ export const C = Object.freeze({
   PIG_RADIUS: 22,
   PIG_ORBIT_RADIUS: 140,
   PIG_ORBIT_SPEED: 0.35,     // rad/s
-  PIG_RESPAWN_TICKS: 1800,   // 60 seconds after it is eaten
+  PIG_FIRST_SPAWN_TICKS: 300, // the first pig shows up 10 seconds in
+  PIG_RESPAWN_TICKS: 900,    // then a new one 30 seconds after each is eaten
   PIG_BONUS: 40,             // +40 max HP (and heals 40) or +40 max energy
   PIG_SPEED_BONUS: 0.4,      // +40% of base max speed and thrust
 });

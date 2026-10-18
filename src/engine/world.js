@@ -2,7 +2,6 @@ import { C, MATCH_TICKS } from './constants.js';
 import { createRng } from './rng.js';
 import { createShip } from './ship.js';
 import { createAsteroid, randomAsteroidVelocity } from './asteroid.js';
-import { spawnPig } from './pig.js';
 
 // entries: [{name, color}] — one per ship, in spawn-slot order.
 export function createWorld(seed, entries) {
@@ -53,7 +52,7 @@ export function createWorld(seed, entries) {
   for (let i = 0; i < C.ASTEROID_LARGE_COUNT; i++) place(2);
   for (let i = 0; i < C.ASTEROID_MEDIUM_COUNT; i++) place(1);
 
-  spawnPig(world);
+  world.pigRespawnAt = C.PIG_FIRST_SPAWN_TICKS;
   world.events = [];
   return world;
 }

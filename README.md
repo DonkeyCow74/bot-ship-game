@@ -6,7 +6,7 @@ Program a spaceship AI, then watch it battle your friends' bots among moving ast
 - Each bot runs in its own sandboxed Web Worker with a 20 ms time limit per tick.
 - Asteroids block line of sight. They break into smaller pieces after 3 hits.
 - Each bot picks 2 of 4 weapons: gun, mines, homing trackers and a shockwave. Every ship also has a dash and a front-or-back shield.
-- A pig spawns in the open middle of the map. Eat it for +40 HP, +40 energy or +40% speed. A new one appears 60 s later.
+- A pig spawns in the open middle of the map 10 s in. Eat it for +40 HP, +40 energy or +40% speed. A new one appears 30 s after each is eaten.
 - The game includes live matches, replays, fast headless tournaments and share links for bots.
 
 **How to write a bot:** [docs/BOT_API.md](docs/BOT_API.md), which is also the "How to build a bot" tab in the game.
