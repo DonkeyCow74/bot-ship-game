@@ -1,8 +1,9 @@
 // A match = a world + one sandboxed bot per ship. Also records everything needed for a replay.
 import { createWorld, getView, step, sanitizeCommand, encodeCommand, decodeCommand } from './engine/sim.js';
+import { normalizeLoadout } from './engine/constants.js';
 import { BotRunner } from './bots/botRunner.js';
 
-export const REPLAY_VERSION = 4; // 2: directional shield, 3: saw + dash, 4: saw strike + dash direction
+export const REPLAY_VERSION = 5; // 5: weapon loadouts (gun, mine, tracker, shockwave)
 
 export class LiveMatch {
   // entries: [{name, color, code}]
@@ -20,8 +21,15 @@ export class LiveMatch {
     this.isReplay = false;
   }
 
+  // Loads the bots, then builds the real world with the loadouts they declared.
   async init() {
     await Promise.all(this.runners.map((r) => r.init()));
+    this.runners.forEach((r, i) => {
+      const { loadout, warning } = normalizeLoadout(r.loadout);
+      this.entries[i].loadout = loadout;
+      if (warning && r.status === 'ready') r.log('warn', warning);
+    });
+    this.world = createWorld(this.seed, this.entries);
   }
 
   async step() {

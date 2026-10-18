@@ -3,15 +3,17 @@ import { wrapAngle } from './vec.js';
 import { controlShip } from './ship.js';
 import { moveAsteroids } from './asteroid.js';
 import { tryFire, updateBullets } from './projectile.js';
-import { tryDropBomb, updateBombs } from './bomb.js';
+import { tryDropMine, tryDropTracker, updateBombs } from './bomb.js';
 import { updatePig } from './pig.js';
 import { moveShips, collideShips } from './collision.js';
-import { trySaw } from './saw.js';
+import { tryShockwave } from './shockwave.js';
 
 export { createWorld } from './world.js';
 export { getView, hasLineOfSight } from './vision.js';
 
-const IDLE = Object.freeze({ thrust: 0, turn: 0, fire: false, bomb: false, shield: false, saw: false, dash: false, pigStat: 'hp' });
+const IDLE = Object.freeze({
+  thrust: 0, turn: 0, fire: false, mine: false, tracker: false, shockwave: false, shield: false, dash: false, pigStat: 'hp',
+});
 
 function num(v, lo, hi) {
   v = Number(v);
@@ -27,9 +29,10 @@ export function sanitizeCommand(c) {
     thrust: num(c.thrust, 0, 1),
     turn: num(c.turn, -1, 1),
     fire: !!c.fire,
-    bomb: !!c.bomb,
+    mine: !!(c.mine || c.bomb), // 'bomb' is the old name for a mine
+    tracker: !!c.tracker,
+    shockwave: !!c.shockwave,
     shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false, // true = 'front'
-    saw: !!c.saw,
     dash: sanitizeDash(c.dash),
     pigStat: PIG_STATS.includes(c.pigStat) ? c.pigStat : 'hp',
   };
@@ -49,8 +52,8 @@ function sanitizeDash(d) {
 
 // Compact form for replays: [thrust, turn, flags, dashAngle?]
 export function encodeCommand(c) {
-  const flags = (c.fire ? 1 : 0) | (c.bomb ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4) |
-    (c.saw ? 64 : 0) | (dashCode(c.dash) << 7);
+  const flags = (c.fire ? 1 : 0) | (c.mine ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4) |
+    (c.tracker ? 64 : 0) | (dashCode(c.dash) << 7) | (c.shockwave ? 1024 : 0);
   return typeof c.dash === 'number' ? [c.thrust, c.turn, flags, c.dash] : [c.thrust, c.turn, flags];
 }
 
@@ -65,8 +68,8 @@ export function decodeCommand(e) {
   const dash = (flags >> 7) & 7;
   return {
     thrust, turn,
-    fire: !!(flags & 1), bomb: !!(flags & 2), shield: SHIELDS[(flags >> 2) & 3] || false,
-    saw: !!(flags & 64), dash: dash === 5 ? angle : dash ? DASH_DIRS[dash - 1] : false,
+    fire: !!(flags & 1), mine: !!(flags & 2), tracker: !!(flags & 64), shockwave: !!(flags & 1024), shield: SHIELDS[(flags >> 2) & 3] || false,
+    dash: dash === 5 ? angle : dash ? DASH_DIRS[dash - 1] : false,
     pigStat: PIG_STATS[(flags >> 4) & 3] || 'hp',
   };
 }
@@ -84,8 +87,9 @@ export function step(world, commands) {
     s.lastCmd = cmd;
     controlShip(s, cmd);
     if (cmd.fire) tryFire(world, s);
-    if (cmd.bomb) tryDropBomb(world, s);
-    if (cmd.saw) trySaw(world, s);
+    if (cmd.mine) tryDropMine(world, s);
+    if (cmd.tracker) tryDropTracker(world, s);
+    if (cmd.shockwave) tryShockwave(world, s);
     if (s.dashTicks === C.DASH_TICKS) world.events.push({ type: 'dash', x: s.x, y: s.y, ship: s.id, angle: s.dashAngle });
   }
 
@@ -143,7 +147,7 @@ function checkWin(world) {
 export function hashWorld(world) {
   const parts = [world.tick, world.over, world.winner];
   const r = (v) => Math.round(v * 1000);
-  for (const s of world.ships) parts.push(r(s.x), r(s.y), r(s.vx), r(s.vy), r(s.angle), r(s.hp), r(s.energy), s.bombs, s.alive);
+  for (const s of world.ships) parts.push(r(s.x), r(s.y), r(s.vx), r(s.vy), r(s.angle), r(s.hp), r(s.energy), JSON.stringify(s.ammo), s.alive);
   for (const a of world.asteroids) parts.push(a.id, r(a.x), r(a.y), a.hitsLeft);
   for (const b of world.bullets) parts.push(b.id, r(b.x), r(b.y));
   for (const b of world.bombs) parts.push(b.id, r(b.x), r(b.y));

@@ -1,7 +1,9 @@
-import { C } from './constants.js';
+import { C, CHARGE_WEAPONS, normalizeLoadout } from './constants.js';
 import { clamp, wrapAngle } from './vec.js';
 
 export function createShip(id, entry, x, y, angle) {
+  const { loadout } = normalizeLoadout(entry.loadout);
+  const charges = loadout.filter((w) => CHARGE_WEAPONS.includes(w));
   return {
     id,
     name: entry.name || `Ship ${id + 1}`,
@@ -14,13 +16,15 @@ export function createShip(id, entry, x, y, angle) {
     maxEnergy: C.SHIP_ENERGY,
     maxSpeed: C.MAX_SPEED,
     thrustAccel: C.THRUST_ACCEL,
-    bombs: C.BOMBS,
+    loadout,                   // the 2 weapons this ship carries
+    ammo: Object.fromEntries(charges.map((w) => [w, C.AMMO_START])),
+    ammoRecharge: Object.fromEntries(charges.map((w) => [w, C.AMMO_RECHARGE_TICKS])),
+    weaponCooldown: Object.fromEntries(charges.map((w) => [w, 0])),
     gunCooldown: 0,
-    bombCooldown: 0,
     shieldOn: false,
     shieldSide: null,          // 'front' | 'back' while the shield is up
-    sawCooldown: 0,
-    sawTicks: 0,               // > 0 right after a strike (for drawing)
+    spinTicks: 0,              // > 0 while spinning out from a shockwave
+    spinDir: 1,
     dashTicks: 0,              // > 0 while dashing
     dashCooldown: 0,
     dashAngle: 0,              // direction of the last dash
@@ -35,11 +39,17 @@ export function createShip(id, entry, x, y, angle) {
   };
 }
 
-// Applies a sanitized command: turning, shield, thrust, energy. Firing and bombs are
-// handled by the projectile/bomb modules.
+// Applies a sanitized command: turning, shield, thrust, dash, energy, ammo. Weapons are
+// handled by their own modules.
 export function controlShip(ship, cmd) {
   const dt = C.DT;
-  ship.angle = wrapAngle(ship.angle + cmd.turn * C.TURN_RATE * dt);
+  if (ship.spinTicks > 0) {
+    // Knocked into a spin by a shockwave: steering doesn't work until it wears off
+    ship.spinTicks--;
+    ship.angle = wrapAngle(ship.angle + ship.spinDir * C.SHOCKWAVE_SPIN_RATE * dt);
+  } else {
+    ship.angle = wrapAngle(ship.angle + cmd.turn * C.TURN_RATE * dt);
+  }
 
   // Raising the shield costs a chunk of energy; keeping it up drains more. Flipping
   // between front and back while it's up is free.
@@ -102,9 +112,24 @@ export function controlShip(ship, cmd) {
   }
 
   if (ship.gunCooldown > 0) ship.gunCooldown--;
-  if (ship.bombCooldown > 0) ship.bombCooldown--;
-  if (ship.sawCooldown > 0) ship.sawCooldown--;
-  if (ship.sawTicks > 0) ship.sawTicks--;
+  for (const w in ship.ammo) {
+    if (ship.weaponCooldown[w] > 0) ship.weaponCooldown[w]--;
+    // A new charge every 15 s, while below the max
+    if (ship.ammo[w] >= C.AMMO_MAX) {
+      ship.ammoRecharge[w] = C.AMMO_RECHARGE_TICKS;
+    } else if (--ship.ammoRecharge[w] <= 0) {
+      ship.ammo[w]++;
+      ship.ammoRecharge[w] = C.AMMO_RECHARGE_TICKS;
+    }
+  }
+}
+
+// Spends one charge of a charge weapon if it's in the loadout, loaded and off cooldown.
+export function useCharge(ship, weapon) {
+  if (!(weapon in ship.ammo) || ship.ammo[weapon] <= 0 || ship.weaponCooldown[weapon] > 0) return false;
+  ship.ammo[weapon]--;
+  ship.weaponCooldown[weapon] = C.WEAPON_COOLDOWN_TICKS;
+  return true;
 }
 
 // 'forward' | 'back' | 'left' | 'right' are relative to the nose; a number is a map angle.

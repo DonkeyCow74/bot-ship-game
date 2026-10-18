@@ -1,4 +1,6 @@
 import { parseMeta, withMeta } from './storage.js';
+import { normalizeLoadout } from '../engine/constants.js';
+import { WEAPON_ICONS } from './arena.js';
 import { shareLink } from './share.js';
 import { downloadText, pickFiles, safeFileName, el } from './files.js';
 
@@ -132,8 +134,13 @@ export class Lab {
         line.className = 'check-line bad';
         line.textContent = '✗ No think(view, memory) function found.';
       } else {
-        line.className = 'check-line ok';
-        line.textContent = '✓ No syntax errors.';
+        // Best guess at the loadout from the source (the real one is read when the bot runs)
+        const m = code.match(/\bloadout\s*=\s*\[([^\]]*)\]/);
+        const declared = m ? [...m[1].matchAll(/['"`](\w+)['"`]/g)].map((x) => x[1]) : undefined;
+        const { loadout, warning } = normalizeLoadout(declared);
+        line.className = 'check-line ' + (warning ? 'warn' : 'ok');
+        line.textContent = `✓ No syntax errors · Loadout: ${loadout.map((w) => `${WEAPON_ICONS[w]} ${w}`).join(' + ')}` +
+          (warning ? `  ⚠ ${warning}` : '');
       }
       details.textContent = '';
     } catch (err) {

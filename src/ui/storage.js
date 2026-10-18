@@ -4,7 +4,10 @@ const KEY = 'shipArena.bots.v1';
 export const BUILTIN_FILES = ['bots/hunter.js', 'bots/sniper.js', 'bots/spinner.js'];
 export const PALETTE = ['#ff5c5c', '#5cc8ff', '#f7d154', '#7dff6b', '#c77dff', '#ff9f43', '#ff6bcb', '#4dd6b4'];
 
-export const STARTER_CODE = `// Your ship's brain. think() runs 30 times a second.
+export const STARTER_CODE = `// Pick 2 weapons: 'gun', 'mine', 'tracker', 'shockwave'
+const loadout = ['gun', 'mine'];
+
+// Your ship's brain. think() runs 30 times a second.
 // view   = everything your ship can see right now (see the "How to build a bot" tab)
 // memory = an object that sticks around between ticks; store anything you like in it
 function think(view, memory) {
@@ -20,6 +23,7 @@ function think(view, memory) {
       turn: turnToward(me, aimAngle),
       thrust: distance(me, enemy) > 500 ? 0.6 : 0,
       fire: linedUp && lineOfSight(view, me, enemy),
+      mine: distance(me, enemy) < 250, // drop a mine if they get close
       pigStat: 'speed',
     };
   }

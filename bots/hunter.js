@@ -1,7 +1,8 @@
 // @name Hunter
 // @color #ff5c5c
-// Aggressive: grabs speed pigs, chases the closest enemy, leads its shots,
-// shields against incoming bullets and drops bombs on anyone tailing it.
+// Aggressive: grabs speed pigs, chases the closest enemy, leads its shots, blasts anyone
+// who gets close with a shockwave, shields against bullets and shoots down trackers.
+const loadout = ['gun', 'shockwave'];
 
 // Fly toward (x, y) at up to `speed`, accounting for drift (steer to fix our velocity).
 function steerTo(me, x, y, speed) {
@@ -47,7 +48,7 @@ function bulletThreat(b, me, horizon) {
 function think(view, memory) {
   const me = view.self;
   const K = view.constants;
-  const out = { thrust: 0, turn: 0, fire: false, bomb: false, shield: false, pigStat: 'speed', debug: [] };
+  const out = { thrust: 0, turn: 0, fire: false, shockwave: false, shield: false, pigStat: 'speed', debug: [] };
 
   let target = null;
   for (const e of view.enemies) {
@@ -75,14 +76,11 @@ function think(view, memory) {
     out.turn = turnToward(me, aimAngle);
     out.thrust = err < 0.6 ? (d > 600 ? 1 : d > 350 ? 0.4 : 0) : 0;
 
-    // Brawl: if they're close, ease in and hit them with the saw
+    // Brawl: with a shockwave charge ready, close in and blast them when in range
     const facing = Math.abs(angleDiff(me.angle, angleTo(me, target))) < 0.5;
-    if (d < 260 && me.energy > 30) {
-      out.turn = turnToward(me, angleTo(me, target));
-      // Ease in (don't crash into them, that hurts us too) and stay inside the blade's reach
-      const closing = ((target.vx - me.vx) * (me.x - target.x) + (target.vy - me.vy) * (me.y - target.y)) / d;
-      out.thrust = facing && d > 65 && closing < 120 ? 0.5 : 0;
-      out.saw = facing && d < 80; // reach is about 80 px center to center
+    if (me.ammo.shockwave > 0 && d < 450) {
+      if (facing && d > K.SHOCKWAVE_RADIUS * 0.6) out.thrust = 0.7;
+      if (d < K.SHOCKWAVE_RADIUS * 0.85) out.shockwave = true;
     }
     // Dash to close the gap on a far-off, lined-up target (from far enough away that we
     // slow down before reaching them: crashing at dash speed hurts us as much as them)
@@ -91,11 +89,6 @@ function think(view, memory) {
     const tolerance = 0.05 + 25 / d;
     out.fire = !out.shield && clear && err < tolerance && d < K.BULLET_RANGE * 0.85 &&
       me.energy > (target.shieldOn ? 70 : 12);
-
-    // Bomb anyone tailing us, but only while we're fast enough to escape our own blast
-    const behind = Math.abs(angleDiff(me.angle + Math.PI, angleTo(me, target))) < 0.7;
-    const fleeing = Math.hypot(me.vx, me.vy) > 220;
-    if (behind && fleeing && d < 320 && me.bombs > 0) out.bomb = true;
 
     out.debug.push({ type: 'line', x: me.x, y: me.y, x2: aim.x, y2: aim.y, color: clear ? '#ff5c5c' : '#555' });
     out.debug.push({ type: 'circle', x: aim.x, y: aim.y, r: 12, color: '#ff5c5c' });
@@ -112,6 +105,15 @@ function think(view, memory) {
     out.turn = s.turn;
     out.thrust = s.thrust;
     out.debug.push({ type: 'line', x: me.x, y: me.y, x2: goal.x, y2: goal.y, color: '#888' });
+  }
+
+  // A tracker chasing us: turn and shoot it down before it gets close
+  const tracker = view.bombs.find((b) => b.kind === 'tracker' && b.chasingMe);
+  if (tracker && distance(me, tracker) < 700) {
+    const aimAngle = angleTo(me, leadTarget(me, tracker, K.BULLET_SPEED) || tracker);
+    out.turn = turnToward(me, aimAngle);
+    out.fire = Math.abs(angleDiff(me.angle, aimAngle)) < 0.08 && !out.shield;
+    out.debug.push({ type: 'text', x: me.x, y: me.y - 40, text: 'tracker!', color: '#ff5c5c' });
   }
 
   const avoid = avoidAsteroids(view, me);

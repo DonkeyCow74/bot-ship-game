@@ -150,7 +150,8 @@ input[type="color"] { width: 40px; height: 32px; padding: 0 2px; background: var
 .bar div { height: 100%; transition: width 0.12s linear; }
 .bar.hp div { background: var(--good); }
 .bar.energy div { background: var(--accent); }
-.card-stats { color: var(--muted); margin-top: 4px; }
+.card-weapons { margin-top: 5px; }
+.card-stats { color: var(--muted); margin-top: 2px; }
 
 .console {
   font: 12px/1.4 var(--mono);
@@ -214,6 +215,7 @@ table.stats td.warn { color: var(--warn); }
 .check-line { font: 13px var(--mono); }
 .check-line.ok { color: var(--good); }
 .check-line.bad { color: var(--bad); }
+.check-line.warn { color: var(--warn); }
 .fight-row { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .lab-errors { height: auto; max-height: 80px; min-height: 0; color: var(--bad); }
 .lab-errors:empty { display: none; }

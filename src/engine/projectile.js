@@ -5,7 +5,7 @@ import { hitAsteroid } from './asteroid.js';
 import { detonateBomb } from './bomb.js';
 
 export function tryFire(world, ship) {
-  if (ship.shieldOn || ship.gunCooldown > 0 || ship.energy < C.BULLET_COST) return false;
+  if (!ship.loadout.includes('gun') || ship.shieldOn || ship.gunCooldown > 0 || ship.energy < C.BULLET_COST) return false;
   const cos = Math.cos(ship.angle), sin = Math.sin(ship.angle);
   const nose = C.SHIP_RADIUS + 4;
   const x = ship.x + cos * nose, y = ship.y + sin * nose;

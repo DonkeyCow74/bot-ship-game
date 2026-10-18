@@ -11,6 +11,8 @@ Your bot is one JavaScript function, `think(view, memory)`. The game calls it **
 5. Use the **Tournament** tab to run lots of matches and find out whose bot is really best.
 
 ```js
+const loadout = ['gun', 'tracker'];   // your 2 weapons
+
 function think(view, memory) {
   const me = view.self;
   const enemy = view.enemies[0];
@@ -20,9 +22,30 @@ function think(view, memory) {
   return {
     turn: turnToward(me, angleTo(me, aim)),
     fire: Math.abs(angleDiff(me.angle, angleTo(me, aim))) < 0.1,
+    tracker: true, // sends a tracker whenever we have a charge
   };
 }
 ```
+
+## Pick your loadout: 2 weapons
+
+There are 4 weapons, and **each bot carries exactly 2**. Choose them with a `loadout` line at the top of your bot:
+
+```js
+const loadout = ['gun', 'tracker'];
+```
+
+| Weapon | Command | What it does |
+|---|---|---|
+| 🔫 `gun` | `fire: true` | Forward cannon. Unlimited shots, but each one costs energy. |
+| 💣 `mine` | `mine: true` | Drops a stealthy mine behind you that waits for an enemy to come close. |
+| 🚀 `tracker` | `tracker: true` | Drops a bomb behind you that chases the nearest enemy after 1 second. |
+| 💥 `shockwave` | `shockwave: true` | Blasts every enemy near you: damage, knockback, and they spin out of control. |
+
+- **Charges:** mines, trackers and shockwaves start with **1 charge** and gain **1 more every 15 seconds**, up to 3 stored. Each one also has a 1 second cooldown between uses.
+- If you leave out `loadout`, you get `['gun', 'mine']`. A weapon you didn't pick does nothing if your bot tries to use it.
+- Everyone can see each other's loadout (`enemy.loadout`), so plan around it.
+- The shield and the dash aren't weapons: every bot has them.
 
 ## What your bot returns
 
@@ -32,10 +55,11 @@ Return an object. Every field is optional, and a missing field means "off" or "0
 |---|---|---|
 | `thrust` | 0 to 1 | Forward engine power. Ships only thrust forward, so to stop you turn around and burn. |
 | `turn` | -1 to 1 | Turn speed. Positive turns clockwise on screen (angle goes up), negative turns counter-clockwise. |
-| `fire` | true/false | Shoot the forward cannon. It costs energy, has a cooldown, and doesn't work while your shield is up. |
-| `bomb` | true/false | Drop a bomb behind you (3 per match). |
+| `fire` | true/false | Shoot the gun (if it's in your loadout). It costs energy, has a cooldown, and doesn't work while your shield is up. |
+| `mine` | true/false | Drop a mine behind you (if it's in your loadout). `bomb: true` also works. |
+| `tracker` | true/false | Drop a tracker behind you (if it's in your loadout). |
+| `shockwave` | true/false | Set off a shockwave around you (if it's in your loadout). |
 | `shield` | `'front'`, `'back'` or `false` | Hold up a shield on the front or back of your ship. Raising it costs a big chunk of energy, and keeping it up drains more. (`true` means `'front'`.) |
-| `saw` | true/false | Swing the saw blade on your nose: a chunk of damage plus a shove to anyone right in front of you. Costs energy and has a short cooldown. |
 | `dash` | `'forward'`, `'back'`, `'left'`, `'right'`, a number, or `false` | Burst in that direction at high speed for a moment. A number is an exact map angle (e.g. `angleTo(enemy, me)` to dash straight away from an enemy). `true` means `'forward'`. Costs energy, then has a cooldown. |
 | `pigStat` | `'hp'`, `'energy'` or `'speed'` | Which upgrade you get if you eat the pig this tick. Defaults to `'hp'`. |
 | `debug` | array | Shapes drawn on screen so you can see what your bot is thinking (see below). |
@@ -55,17 +79,20 @@ Coordinates are in pixels. `x` goes right and `y` goes **down**. Angles are radi
 | `hp, maxHp` | Health (starts at 100) |
 | `energy, maxEnergy` | Energy for shooting and shields (starts at 100, regenerates) |
 | `maxSpeed, thrustAccel` | Your current top speed and engine power (pig upgrades raise these) |
-| `bombs` | Bombs left |
-| `gunCooldown, bombCooldown` | Ticks until you can shoot or bomb again |
+| `loadout` | Your 2 weapons, e.g. `['gun', 'tracker']` |
+| `ammo` | Charges left for your charge weapons, e.g. `{tracker: 1}` |
+| `ammoRecharge` | Ticks until each charge weapon gets its next charge |
+| `weaponCooldown` | Ticks until each charge weapon can be used again |
+| `gunCooldown` | Ticks until you can shoot again |
 | `shieldOn, shieldSide` | Is your shield up, and which side (`'front'`/`'back'`, or `null`)? |
-| `sawCooldown` | Ticks until you can swing the saw again |
+| `spinning` | Are you spinning out from a shockwave? (Steering doesn't work until it stops.) |
 | `dashing, dashCooldown` | Are you mid-dash? How many ticks until you can dash again? |
 | `upgrades` | `{hp, energy, speed}`: how many pigs you've spent on each |
 | `id, name` | Your ship's number and name |
 
 ### `view.enemies`: ships you can see
 
-Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, sawing, dashing, upgrades}`.
+Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, dashing, spinning, loadout, upgrades}`.
 
 > Enemies you can't see simply aren't in the list. Use `memory` to remember where you last saw someone.
 
@@ -74,8 +101,8 @@ Your sensors reach **1500 px**, and asteroids block line of sight. You only see 
 | Field | Meaning |
 |---|---|
 | `view.asteroids` | Every asteroid within sensor range (radar sees through rock): `{id, x, y, vx, vy, radius, size, hitsLeft}`. `size` is 2 for large, 1 for medium and 0 for small. |
-| `view.bullets` | Bullets you can see: `{x, y, vx, vy, mine, ticksLeft}` |
-| `view.bombs` | Your own bombs, plus enemy bombs within **600 px** and in line of sight (bombs are stealthy): `{x, y, vx, vy, mine, armed, ticksUntilFuse}` |
+| `view.bullets` | Bullets you can see: `{x, y, vx, vy, own, ticksLeft}`. `own` is true for yours (`mine` also works). |
+| `view.bombs` | Mines and trackers: `{kind, own, x, y, vx, vy, armed, ticksUntilFuse}`. `kind` is `'mine'` or `'tracker'`, and `own` is true for yours. Trackers also have `heading`, `speed`, and `chasingMe`. You always see your own. Enemy trackers show up like ships (in range and in line of sight), but enemy mines are stealthy: you only see them within **600 px**. |
 | `view.pig` | `{x, y, vx, vy}` when a pig is out, otherwise `null`. Everyone can always see the pig. |
 | `view.pigRespawnIn` | Ticks until the next pig (0 if one is out right now) |
 | `view.pigZone` | `{x, y, radius}`: the open circle in the middle with no asteroids |
@@ -134,29 +161,33 @@ debug: [
 - Space has a little drag (you slowly coast to a stop). Top speed is 360 px/s.
 - Ramming walls, asteroids or other ships hurts if you hit faster than 120 px/s, and the faster you hit the more it hurts. In ship-vs-ship crashes, both ships take damage.
 
-### Gun
+### 🔫 Gun
 - Bullets fly at 720 px/s **plus your ship's velocity**, go up to 1400 px, and do 6 damage.
 - Each shot costs 10 energy. You can shoot up to about 4 times a second.
-- Bullets hit asteroids, ships and bombs. Shooting a bomb sets it off.
+- Bullets hit asteroids, ships, mines and trackers. Shooting a mine or tracker sets it off.
 
-### Bombs
-- 3 per match. They drop behind you and drift slowly.
-- A bomb **arms after 1 second**. After that, an enemy ship within 130 px sets it off, and it explodes by itself after 20 seconds.
-- The blast (240 px) does up to 45 damage to **every** ship in range, including yours, so get clear! It also breaks asteroids and sets off other bombs.
+### 💣 Mine
+- It drops behind you and drifts to a stop. It **arms after 1 second**. After that, an enemy ship within 130 px sets it off, and it explodes by itself after 20 seconds.
+- The blast (240 px) does up to **45 damage** to **every** ship in range, including yours, so get clear! It also breaks asteroids and sets off other mines and trackers.
+- Enemies only see your mines within 600 px, so they're good traps.
+
+### 🚀 Tracker
+- It drops behind you. After **1 second** it locks onto the **nearest enemy** and chases it. If that enemy dies, it picks a new one.
+- It **starts slow and speeds up** (up to 460 px/s, faster than a normal ship), but it **turns slowly**, so sharp turns and dashes can shake it off. Make it run into an asteroid!
+- It explodes when it gets within 45 px of an enemy, or when it hits an asteroid or a wall. The blast is 170 px for up to **35 damage**, and like a mine it hurts everyone in range.
+- **Shoot it to blow it up early.** It explodes by itself 15 seconds after it was dropped.
+
+### 💥 Shockwave
+- A blast all around you, reaching ships within **220 px** of you.
+- Each enemy it reaches takes **20 damage**, gets **knocked away**, and **spins out of control for 0.8 s**: their steering does nothing until it stops. Great for setting up shots.
+- It also counts as one hit on nearby asteroids.
+- A shield facing you blocks the damage and the spin, but the shielded ship still gets pushed.
 
 ### Shield
 - The shield covers a **120° arc** on either the **front** or the **back** of your ship, never both. It blocks 100% of hits coming from inside that arc. Hits from the sides get through.
 - **Raising it costs 20 energy up front**, then 20 energy/s while it's up. You need at least 30 energy to raise it, so use it wisely. Holding the shield button down nonstop just burns energy. Flipping it between front and back while it's up is free.
 - While it's up you can't shoot or regenerate energy. It drops when energy hits 0.
 - Enemies can see your shield and which side it's on (`enemy.shieldOn`, `enemy.shieldSide`). Hit them from the other side!
-
-### Saw
-- A spinning blade sits on your nose. `saw: true` swings it out for **one strike**.
-- A strike does **18 damage** to every ship touching the blade and **knocks them back hard**, which also pushes you back a little. So close fights don't turn into two ships stuck on each other.
-- The reach is short: about **80 px** from your center to theirs, and they have to be in front of you.
-- Each strike costs **20 energy**, and you can swing again after **1 second**.
-- A strike also counts as one hit on any asteroid it touches.
-- You can't swing with your shield up. A shield facing the blade blocks the damage, but its owner still gets shoved.
 
 ### Dash
 - It bursts you to **750 px/s** (about twice top speed) for 0.3 s in **any direction**, then you ease back to normal speed.
@@ -168,7 +199,7 @@ debug: [
 
 ### Asteroids
 - Large ones break into 2 medium, medium into 2 small, and small ones crumble to nothing.
-- **Each stage takes 3 hits.** A bomb blast breaks a stage instantly.
+- **Each stage takes 3 hits.** A mine or tracker blast breaks a stage instantly.
 - They drift, spin, bounce off walls and each other, and block line of sight.
 
 ### The pig 🐷
@@ -191,11 +222,13 @@ debug: [
 
 - **Dodge:** check `view.bullets` for enemy shots heading your way and sidestep them, or raise the shield on the side the shot is coming from (`shieldSideFor(me, bullet)`) just before it hits.
 - **Use cover:** put an asteroid between you and the enemy, and they can't see (or aim at) you.
-- **Bait bombs:** run away, drop a bomb, and lead your chaser over it.
+- **Bait mines:** run away, drop a mine, and lead your chaser over it.
+- **Beat trackers:** shoot them, make them crash into an asteroid, or turn hard (they turn much slower than you).
 - **Pig timing:** the open middle is dangerous. Grab the pig when enemies are busy or far away. `view.pigRespawnIn` tells you when the next one appears.
-- **Close quarters:** one saw strike does as much as 3 bullets and shoves the enemy away. Dash in, saw, then shoot them while they tumble.
+- **Close quarters:** a shockwave spins the enemy out of control. Dash in, blast them, then shoot them while they tumble.
+- **Loadout counters:** a bot without a gun can't shoot down your trackers. A shockwave bot has to get close, so keep your distance.
 - **Dodging:** dash sideways (`'left'`/`'right'`) across a bullet's path, or `'back'` to keep your aim on an enemy while you retreat.
-- **Energy management:** shooting, shielding, sawing and dashing all share one energy pool. Don't empty it right before a fight.
+- **Energy management:** shooting, shielding and dashing all share one energy pool. Don't empty it right before a fight.
 - **Remember enemies:** they disappear behind rocks, so track where they went with `memory`.
 
 ## Running it yourself

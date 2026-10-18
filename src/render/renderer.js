@@ -239,6 +239,10 @@ export class Renderer {
       const x = lerp(b.px, b.x, t), y = lerp(b.py, b.y, t);
       const armed = world.tick >= b.armAt;
       const r = Math.max(C.BOMB_RADIUS, 5 / z);
+      if (b.kind === 'tracker') {
+        this.drawTracker(g, z, world, b, x, y, r, armed);
+        continue;
+      }
       g.fillStyle = '#1b1b22';
       g.strokeStyle = world.ships[b.owner].color;
       g.lineWidth = 3 / z;
@@ -251,9 +255,42 @@ export class Renderer {
       if (armed) {
         g.strokeStyle = 'rgba(255, 59, 59, 0.15)';
         g.lineWidth = 1.5 / z;
-        g.beginPath(); g.arc(x, y, C.BOMB_TRIGGER_RADIUS, 0, TAU); g.stroke();
+        g.beginPath(); g.arc(x, y, C.MINE_TRIGGER_RADIUS, 0, TAU); g.stroke();
       }
     }
+  }
+
+  // A little homing missile: points where it's heading, with a flame once it's chasing
+  drawTracker(g, z, world, b, x, y, r, armed) {
+    const color = world.ships[b.owner].color;
+    g.save();
+    g.translate(x, y);
+    g.rotate(b.heading);
+    const s = r * 1.4;
+    if (armed) {
+      const len = s * (1 + b.speed / 250 + Math.random() * 0.4);
+      g.fillStyle = '#ffae3b';
+      g.beginPath();
+      g.moveTo(-s * 0.6, -s * 0.35);
+      g.lineTo(-s * 0.6 - len, 0);
+      g.lineTo(-s * 0.6, s * 0.35);
+      g.fill();
+    }
+    g.fillStyle = '#1b1b22';
+    g.strokeStyle = color;
+    g.lineWidth = 3 / z;
+    g.beginPath();
+    g.moveTo(s * 1.1, 0);
+    g.lineTo(-s * 0.6, -s * 0.6);
+    g.lineTo(-s * 0.6, s * 0.6);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    if (Math.sin(world.tick * (armed ? 1.2 : 0.3)) > 0) {
+      g.fillStyle = armed ? '#ff3b3b' : '#ffcf3b';
+      g.beginPath(); g.arc(0, 0, s * 0.3, 0, TAU); g.fill();
+    }
+    g.restore();
   }
 
   drawShips(g, z, world, t) {
@@ -289,8 +326,19 @@ export class Renderer {
       g.closePath();
       g.fill();
       g.stroke();
-      this.drawSaw(g, z, k, s);
       g.restore();
+
+      if (s.spinTicks > 0) {
+        // Dizzy stars circling overhead
+        const time = performance.now() / 1000;
+        g.fillStyle = '#ffe66b';
+        g.font = `${Math.round(12 / z)}px system-ui, sans-serif`;
+        g.textAlign = 'center';
+        for (let i = 0; i < 3; i++) {
+          const a = time * 8 + (i * TAU) / 3;
+          g.fillText('★', x + Math.cos(a) * (R + 6) * k, y - (R + 4) * k + Math.sin(a) * 6 * k);
+        }
+      }
 
       if (s.shieldOn) {
         // An arc on the protected side only
@@ -321,44 +369,6 @@ export class Renderer {
       g.textAlign = 'center';
       g.fillText(s.name, x, by - 4 / z);
     }
-  }
-
-  // Called inside the ship's rotated/scaled transform (nose points along +x).
-  // Idle: a small blade tucked on the nose. Striking: it shoots out big, spinning, with a swipe.
-  drawSaw(g, z, k, ship) {
-    const R = C.SHIP_RADIUS;
-    const striking = ship.sawTicks > 0;
-    const p = striking ? ship.sawTicks / C.SAW_SHOW_TICKS : 0; // 1 -> 0 over the swing
-    const r = striking ? C.SAW_RADIUS : C.SAW_RADIUS * 0.45;
-    const cx = striking ? R + C.SAW_REACH : R + 2;
-    g.save();
-    if (striking) {
-      // Swipe arc around the blade
-      g.strokeStyle = `rgba(255, 220, 140, ${0.9 * p})`;
-      g.lineWidth = 5 / z / k;
-      g.beginPath();
-      g.arc(cx, 0, r + 8, -Math.PI * 0.8 + (1 - p) * 2, Math.PI * 0.3 + (1 - p) * 2);
-      g.stroke();
-    }
-    g.translate(cx, 0);
-    g.rotate(performance.now() / (striking ? 25 : 300));
-    g.globalAlpha = striking || ship.sawCooldown === 0 ? 1 : 0.45;
-    g.beginPath();
-    const teeth = 10;
-    for (let i = 0; i < teeth * 2; i++) {
-      const a = (i / (teeth * 2)) * TAU;
-      const rr = i % 2 ? r * 0.7 : r;
-      g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-    }
-    g.closePath();
-    g.fillStyle = striking ? '#f2f5ff' : '#c9ced9';
-    g.fill();
-    g.strokeStyle = '#4b5060';
-    g.lineWidth = 1.5 / z / k;
-    g.stroke();
-    g.fillStyle = '#3a3e4a';
-    g.beginPath(); g.arc(0, 0, r * 0.3, 0, TAU); g.fill();
-    g.restore();
   }
 
   drawDashTrail(g, z, s, x, y, k) {

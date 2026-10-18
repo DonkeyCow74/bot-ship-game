@@ -72,6 +72,7 @@ export class BotRunner {
     if (!m || typeof m !== 'object') return;
     if (m.type === 'ready' && this.status === 'loading') {
       this.status = 'ready';
+      this.loadout = m.loadout;
       this._initDone?.(true);
     } else if (m.type === 'initError' && this.status === 'loading') {
       this._fail(String(m.error));

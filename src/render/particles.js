@@ -36,7 +36,7 @@ export class Particles {
     for (const e of events) {
       switch (e.type) {
         case 'explosion':
-          this.burst(e.x, e.y, 60, '#ffb347', 420, 0.8, 5);
+          this.burst(e.x, e.y, e.kind === 'tracker' ? 45 : 60, '#ffb347', 420, 0.8, 5);
           this.burst(e.x, e.y, 30, '#fff3b0', 250, 0.5, 4);
           this.ring(e.x, e.y, e.r, '#ffb347', 0.6);
           break;
@@ -61,13 +61,13 @@ export class Particles {
           this.burst(e.x, e.y, 40, '#ff9ec4', 260, 1, 5);
           this.text(e.x, e.y - 40, pigBonusLabel(e.stat).toUpperCase(), '#ff9ec4');
           break;
-        case 'saw':
-          this.ring(e.x, e.y, 34, '#ffe08a', 0.2);
+        case 'shockwave':
+          this.ring(e.x, e.y, e.r, '#c9a6ff', 0.45);
+          this.ring(e.x, e.y, e.r * 0.7, '#ffffff', 0.3);
+          this.burst(e.x, e.y, 40, '#c9a6ff', e.r * 2.2, 0.45, 3);
           break;
-        case 'sawHit':
-          this.burst(e.x, e.y, 18, '#ffd27a', 320, 0.45, 3);
-          this.burst(e.x, e.y, 8, '#ffffff', 200, 0.3, 2);
-          this.ring(e.x, e.y, 60, '#ffd27a', 0.3);
+        case 'shockHit':
+          this.burst(e.x, e.y, 14, '#ffe66b', 200, 0.5, 3);
           break;
         case 'dash':
           this.burst(e.x - Math.cos(e.angle) * 20, e.y - Math.sin(e.angle) * 20, 14, '#b4f0ff', 160, 0.4, 3);

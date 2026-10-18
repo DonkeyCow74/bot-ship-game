@@ -29,7 +29,8 @@ export function getView(world, shipId) {
       id: s.id, name: s.name,
       x: r1(s.x), y: r1(s.y), vx: r1(s.vx), vy: r1(s.vy), angle: s.angle,
       hp: r1(s.hp), maxHp: s.maxHp, shieldOn: s.shieldOn, shieldSide: s.shieldSide,
-      sawing: s.sawTicks > 0, dashing: s.dashTicks > 0,
+      dashing: s.dashTicks > 0, spinning: s.spinTicks > 0,
+      loadout: [...s.loadout],
       upgrades: { ...s.upgrades },
     });
   }
@@ -48,21 +49,30 @@ export function getView(world, shipId) {
     if (b.dead || !inRange(b.x, b.y)) continue;
     const mine = b.owner === me.id;
     if (!mine && !canSee(b.x, b.y)) continue;
-    bullets.push({ x: r1(b.x), y: r1(b.y), vx: r1(b.vx), vy: r1(b.vy), mine, ticksLeft: b.life });
+    bullets.push({ x: r1(b.x), y: r1(b.y), vx: r1(b.vx), vy: r1(b.vy), mine, own: mine, ticksLeft: b.life });
   }
 
   const bombs = [];
   for (const b of world.bombs) {
     if (b.dead) continue;
-    const mine = b.owner === me.id;
-    if (!mine) {
+    const own = b.owner === me.id;
+    if (!own) {
+      // Enemy mines are stealthy (only seen up close); trackers show up like anything else
       const d = Math.hypot(b.x - me.x, b.y - me.y);
-      if (d > C.BOMB_ENEMY_VISIBLE_RANGE || !canSee(b.x, b.y)) continue;
+      const range = b.kind === 'mine' ? C.MINE_ENEMY_VISIBLE_RANGE : C.SENSOR_RANGE;
+      if (d > range || !canSee(b.x, b.y)) continue;
     }
-    bombs.push({
-      x: r1(b.x), y: r1(b.y), vx: r1(b.vx), vy: r1(b.vy), mine,
+    const view = {
+      kind: b.kind, own,
+      x: r1(b.x), y: r1(b.y), vx: r1(b.vx), vy: r1(b.vy),
       armed: world.tick >= b.armAt, ticksUntilFuse: b.fuseAt - world.tick,
-    });
+    };
+    if (b.kind === 'tracker') {
+      view.heading = b.heading;
+      view.speed = r1(b.speed);
+      view.chasingMe = b.target === me.id;
+    }
+    bombs.push(view);
   }
 
   const pig = world.pig;
@@ -75,9 +85,13 @@ export function getView(world, shipId) {
       hp: r1(me.hp), maxHp: me.maxHp,
       energy: r1(me.energy), maxEnergy: me.maxEnergy,
       maxSpeed: me.maxSpeed, thrustAccel: me.thrustAccel,
-      bombs: me.bombs, gunCooldown: me.gunCooldown, bombCooldown: me.bombCooldown,
+      loadout: [...me.loadout],
+      ammo: { ...me.ammo },                   // charges left for mine/tracker/shockwave
+      ammoRecharge: { ...me.ammoRecharge },   // ticks until the next charge
+      weaponCooldown: { ...me.weaponCooldown },
+      gunCooldown: me.gunCooldown,
       shieldOn: me.shieldOn, shieldSide: me.shieldSide,
-      sawCooldown: me.sawCooldown, dashing: me.dashTicks > 0, dashCooldown: me.dashCooldown,
+      dashing: me.dashTicks > 0, dashCooldown: me.dashCooldown, spinning: me.spinTicks > 0,
       upgrades: { ...me.upgrades },
     },
     enemies,

@@ -6,6 +6,7 @@ import { matchEntries } from './storage.js';
 import { downloadText, pickFiles, safeFileName, el } from './files.js';
 
 const SLOT_KEY = 'shipArena.slots';
+export const WEAPON_ICONS = { gun: '🔫', mine: '💣', tracker: '🚀', shockwave: '💥' };
 const MAX_STEPS_PER_FRAME = 12;
 
 const $ = (id) => document.getElementById(id);
@@ -287,6 +288,7 @@ export class Arena {
           el('span', { class: 'card-status' })),
         el('div', { class: 'bar hp' }, el('div')),
         el('div', { class: 'bar energy' }, el('div')),
+        el('div', { class: 'card-weapons small' }),
         el('div', { class: 'card-stats small' }));
       card.onclick = () => this.setFollow(this.follow === i ? null : i);
       wrap.append(card);
@@ -309,14 +311,20 @@ export class Arena {
       card.classList.toggle('dead', !s.alive);
       card.querySelector('.hp div').style.width = `${(100 * Math.max(0, s.hp)) / s.maxHp}%`;
       card.querySelector('.energy div').style.width = `${(100 * s.energy) / s.maxEnergy}%`;
-      let status = s.alive ? [s.shieldOn && `🛡 ${s.shieldSide}`, s.sawTicks > 0 && '⚙ saw!', s.dashTicks > 0 && '💨'].filter(Boolean).join(' ') : '☠';
+      let status = s.alive ? [s.shieldOn && `🛡 ${s.shieldSide}`, s.spinTicks > 0 && '😵 spinning', s.dashTicks > 0 && '💨'].filter(Boolean).join(' ') : '☠';
       if (r?.status === 'error') status += ' ⚠ load error';
       else if (r?.status === 'killed') status += ' ⚠ frozen';
       else if (r && (r.errors || r.timeouts)) status += ` ⚠ ${r.errors + r.timeouts}`;
       card.querySelector('.card-status').textContent = status;
+      // Loadout: the gun just shows its icon; charge weapons show charges + time to the next
+      card.querySelector('.card-weapons').textContent = s.loadout.map((wpn) => {
+        if (!(wpn in s.ammo)) return `${WEAPON_ICONS[wpn]} ${wpn}`;
+        const next = s.ammo[wpn] < C.AMMO_MAX ? ` (+1 in ${Math.ceil(s.ammoRecharge[wpn] / C.TICK_RATE)}s)` : '';
+        return `${WEAPON_ICONS[wpn]} ${wpn} ×${s.ammo[wpn]}${next}`;
+      }).join('  ·  ');
       const up = s.upgrades;
       card.querySelector('.card-stats').textContent =
-        `HP ${Math.ceil(Math.max(0, s.hp))}/${s.maxHp} · 💣${s.bombs} · K ${s.stats.kills} · dmg ${Math.round(s.stats.damageDealt)}` +
+        `HP ${Math.ceil(Math.max(0, s.hp))}/${s.maxHp} · K ${s.stats.kills} · dmg ${Math.round(s.stats.damageDealt)}` +
         (up.hp + up.energy + up.speed ? ` · 🐷 ${['hp', 'energy', 'speed'].filter((k) => up[k]).map((k) => `${k}×${up[k]}`).join(' ')}` : '');
     });
     this.renderConsole(false);

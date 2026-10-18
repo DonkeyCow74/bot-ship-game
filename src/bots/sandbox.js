@@ -84,9 +84,8 @@ const cleanCmd = (c) => {
   return {
     thrust: Number(c.thrust) || 0,
     turn: Number(c.turn) || 0,
-    fire: !!c.fire, bomb: !!c.bomb,
+    fire: !!c.fire, mine: !!(c.mine || c.bomb), tracker: !!c.tracker, shockwave: !!c.shockwave,
     shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false,
-    saw: !!c.saw,
     dash: typeof c.dash === 'number' || typeof c.dash === 'string' ? c.dash : !!c.dash,
     pigStat: typeof c.pigStat === 'string' ? c.pigStat : 'hp',
     debug: cleanDebug(c.debug),
@@ -100,10 +99,13 @@ listen('message', (e) => {
     Math.random = mulberry32(m.seed >>> 0); // seeded, so matches can be replayed
     logBudget = 20;
     try {
-      const factory = new Function(m.code + '\\n;return typeof think === "function" ? think : undefined;');
-      think = factory();
+      const factory = new Function(m.code + '\\n;return { think: typeof think === "function" ? think : undefined, ' +
+        'loadout: typeof loadout === "undefined" ? undefined : loadout };');
+      const made = factory();
+      think = made.think;
       if (typeof think !== 'function') throw new Error('Your bot must define a function named think(view, memory).');
-      post({ type: 'ready' });
+      const loadout = Array.isArray(made.loadout) ? made.loadout.slice(0, 8).map(String) : made.loadout === undefined ? undefined : String(made.loadout);
+      post({ type: 'ready', loadout });
     } catch (err) {
       post({ type: 'initError', error: errText(err) });
     }

@@ -1,7 +1,9 @@
 // @name Sniper
 // @color #5cc8ff
 // Careful: keeps its distance, only takes well-aimed shots, hides behind asteroids
-// when hurt, and only goes for the pig (HP upgrade) when nobody is around.
+// when hurt, mines anyone who charges it, and only goes for the pig (HP upgrade) when
+// nobody is around.
+const loadout = ['gun', 'mine'];
 
 function steerTo(me, x, y, speed) {
   const dx = x - me.x, dy = y - me.y;
@@ -30,7 +32,7 @@ function hidingSpot(view, me, enemy) {
 function think(view, memory) {
   const me = view.self;
   const K = view.constants;
-  const out = { thrust: 0, turn: 0, fire: false, bomb: false, shield: false, pigStat: 'hp', debug: [] };
+  const out = { thrust: 0, turn: 0, fire: false, mine: false, shield: false, pigStat: 'hp', debug: [] };
   const hurt = me.hp < me.maxHp * 0.4;
 
   let target = null;
@@ -70,7 +72,7 @@ function think(view, memory) {
       // Leave a bomb behind if they charge us while we're backing away fast
       const awayX = (me.x - target.x) / d, awayY = (me.y - target.y) / d;
       const retreating = me.vx * awayX + me.vy * awayY > 200;
-      if (retreating && d < 300 && me.bombs > 0) out.bomb = true;
+      if (retreating && d < 300 && me.ammo.mine > 0) out.mine = true;
     }
 
     const err = Math.abs(angleDiff(me.angle, aimAngle));
@@ -78,9 +80,8 @@ function think(view, memory) {
     const blocked = target.shieldOn && shieldSideFor(target, me) === target.shieldSide;
     out.fire = !out.shield && !blocked && err < 0.03 + 12 / d &&
       lineOfSight(view, me, aim) && d < K.BULLET_RANGE * 0.9 && me.energy > 20;
-    // Someone right on top of us: saw them away, or dash backward out of reach
-    if (d < 80 && err < 0.5) out.saw = true;
-    else if (d < 250 && me.dashCooldown === 0 && me.energy > 40) out.dash = 'back';
+    // Someone right on top of us: dash backward out of reach
+    if (d < 250 && me.dashCooldown === 0 && me.energy > 40) out.dash = 'back';
     out.debug.push({ type: 'line', x: me.x, y: me.y, x2: aim.x, y2: aim.y, color: '#5cc8ff' });
     out.debug.push({ type: 'text', x: me.x, y: me.y - 40, text: hurt ? 'hiding' : 'sniping', color: '#5cc8ff' });
   } else {
