@@ -1,0 +1,184 @@
+# How to build a bot
+
+Your bot is one JavaScript function, `think(view, memory)`. The game calls it **30 times a second**, and each time it tells your ship what to do. Every bot gets exactly the same ship, the same information and the same helper functions. The only difference between bots is the strategy.
+
+## Quick start
+
+1. Open the **Bot Lab** tab and click **＋ New bot**. You get a simple bot that already works.
+2. Change something, then click **⚔ Fight!** to try it against a sample bot.
+3. In the Arena, click your ship's card to follow it. Tick **Show what the followed ship can see** and **Show bot debug drawings** to see the fight through your bot's eyes.
+4. When you're happy with it, use **🔗 Copy share link** or **⬇ Download** to send it to your friends. They can open the link, or upload the file in their Bot Lab.
+5. Use the **Tournament** tab to run lots of matches and find out whose bot is really best.
+
+```js
+function think(view, memory) {
+  const me = view.self;
+  const enemy = view.enemies[0];
+  if (!enemy) return { thrust: 0.5, turn: turnToward(me, angleTo(me, view.pigZone)) };
+
+  const aim = leadTarget(me, enemy, view.constants.BULLET_SPEED) || enemy;
+  return {
+    turn: turnToward(me, angleTo(me, aim)),
+    fire: Math.abs(angleDiff(me.angle, angleTo(me, aim))) < 0.1,
+  };
+}
+```
+
+## What your bot returns
+
+Return an object. Every field is optional, and a missing field means "off" or "0".
+
+| Field | Type | What it does |
+|---|---|---|
+| `thrust` | 0 to 1 | Forward engine power. Ships only thrust forward, so to stop you turn around and burn. |
+| `turn` | -1 to 1 | Turn speed. Positive turns clockwise on screen (angle goes up), negative turns counter-clockwise. |
+| `fire` | true/false | Shoot the forward cannon. It costs energy, has a cooldown, and doesn't work while your shield is up. |
+| `bomb` | true/false | Drop a bomb behind you (3 per match). |
+| `shield` | true/false | Hold the shield up. It blocks **all** damage but drains energy fast. |
+| `pigStat` | `'hp'`, `'energy'` or `'speed'` | Which upgrade you get if you eat the pig this tick. Defaults to `'hp'`. |
+| `debug` | array | Shapes drawn on screen so you can see what your bot is thinking (see below). |
+
+Anything invalid gets fixed or ignored: numbers are clamped and junk is dropped. You can't break the game, only your own bot.
+
+## What your bot sees: `view`
+
+Coordinates are in pixels. `x` goes right and `y` goes **down**. Angles are radians, where `0` points right and `Math.PI / 2` points down. The arena is 6000 × 6000.
+
+### `view.self`: your ship (always fully known)
+
+| Field | Meaning |
+|---|---|
+| `x, y, vx, vy` | Position and velocity (px/s) |
+| `angle` | The direction the nose points (radians) |
+| `hp, maxHp` | Health (starts at 100) |
+| `energy, maxEnergy` | Energy for shooting and shields (starts at 100, regenerates) |
+| `maxSpeed, thrustAccel` | Your current top speed and engine power (pig upgrades raise these) |
+| `bombs` | Bombs left |
+| `gunCooldown, bombCooldown` | Ticks until you can shoot or bomb again |
+| `shieldOn` | Is your shield up right now? |
+| `upgrades` | `{hp, energy, speed}`: how many pigs you've spent on each |
+| `id, name` | Your ship's number and name |
+
+### `view.enemies`: ships you can see
+
+Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, upgrades}`.
+
+> Enemies you can't see simply aren't in the list. Use `memory` to remember where you last saw someone.
+
+### Everything else
+
+| Field | Meaning |
+|---|---|
+| `view.asteroids` | Every asteroid within sensor range (radar sees through rock): `{id, x, y, vx, vy, radius, size, hitsLeft}`. `size` is 2 for large, 1 for medium and 0 for small. |
+| `view.bullets` | Bullets you can see: `{x, y, vx, vy, mine, ticksLeft}` |
+| `view.bombs` | Your own bombs, plus enemy bombs within **600 px** and in line of sight (bombs are stealthy): `{x, y, vx, vy, mine, armed, ticksUntilFuse}` |
+| `view.pig` | `{x, y, vx, vy}` when a pig is out, otherwise `null`. Everyone can always see the pig. |
+| `view.pigRespawnIn` | Ticks until the next pig (0 if one is out right now) |
+| `view.pigZone` | `{x, y, radius}`: the open circle in the middle with no asteroids |
+| `view.arena` | `{width, height}` |
+| `view.tick` / `view.ticksLeft` | The current tick, and how many are left (30 ticks = 1 second, matches last 3 minutes) |
+| `view.shipsAlive` | How many ships are still flying, including you |
+| `view.constants` | Every game number (bullet speed, damage, ranges…). Use these instead of typing numbers in. |
+
+## `memory`
+
+`memory` starts as an empty object `{}` and stays the same object for the whole match, so you can store things in it:
+
+```js
+if (!memory.lastSeen) memory.lastSeen = {};
+for (const e of view.enemies) memory.lastSeen[e.id] = { x: e.x, y: e.y, tick: view.tick };
+```
+
+## Helper functions
+
+Every bot can call these directly:
+
+| Helper | What it does |
+|---|---|
+| `angleTo(a, b)` | Angle from point `a` to point `b` |
+| `distance(a, b)` | Distance between two points |
+| `angleDiff(from, to)` | Smallest signed turn between two angles (-π to π) |
+| `normalizeAngle(a)` | Wraps an angle into -π to π |
+| `turnToward(self, angle)` | A `turn` value that rotates you toward `angle` and eases off as you line up |
+| `leadTarget(shooter, target, bulletSpeed)` | The point to aim at so a bullet hits a moving target: `{x, y, time}` or `null` |
+| `raycast(view, x1, y1, x2, y2)` | The first visible asteroid blocking that line: `{asteroid, distance}` or `null` |
+| `lineOfSight(view, a, b)` | `true` if no visible asteroid blocks the line from `a` to `b` |
+| `predict(obj, seconds)` | Where something will be if it keeps drifting |
+| `clamp(v, lo, hi)` | Keeps a number between `lo` and `hi` |
+
+`Math.random()` works, but it's seeded, so a match with the same seed plays out the same way every time. That's what makes replays work.
+
+## Debug drawings
+
+Return a `debug` array to draw on the map (up to 200 shapes per tick). Turn on **Show bot debug drawings** in the Arena to see them.
+
+```js
+debug: [
+  { type: 'line', x: me.x, y: me.y, x2: aim.x, y2: aim.y, color: '#ff0' },
+  { type: 'circle', x: spot.x, y: spot.y, r: 30, color: '#0ff' },
+  { type: 'text', x: me.x, y: me.y - 40, text: 'hunting', color: '#fff' },
+]
+```
+
+`console.log()` works too, and prints to the **Bot console** in the Arena (up to 5 lines per tick).
+
+## The rules
+
+### Ships
+- 100 HP, 100 energy. Energy regenerates at 14/s, but not while the shield is up.
+- Space has a little drag (you slowly coast to a stop). Top speed is 360 px/s.
+- Ramming walls, asteroids or other ships hurts if you hit faster than 120 px/s, and the faster you hit the more it hurts. In ship-vs-ship crashes, both ships take damage.
+
+### Gun
+- Bullets fly at 720 px/s **plus your ship's velocity**, go up to 1400 px, and do 6 damage.
+- Each shot costs 10 energy. You can shoot up to about 4 times a second.
+- Bullets hit asteroids, ships and bombs. Shooting a bomb sets it off.
+
+### Bombs
+- 3 per match. They drop behind you and drift slowly.
+- A bomb **arms after 1 second**. After that, an enemy ship within 130 px sets it off, and it explodes by itself after 20 seconds.
+- The blast (240 px) does up to 45 damage to **every** ship in range, including yours, so get clear! It also breaks asteroids and sets off other bombs.
+
+### Shield
+- Blocks 100% of damage. It drains 25 energy/s, so a full tank lasts about 4 seconds.
+- You need at least 10 energy to turn it on. While it's up you can't shoot, and it drops when energy hits 0.
+- Enemies can see when your shield is up (`enemy.shieldOn`).
+
+### Asteroids
+- Large ones break into 2 medium, medium into 2 small, and small ones crumble to nothing.
+- **Each stage takes 3 hits.** A bomb blast breaks a stage instantly.
+- They drift, spin, bounce off walls and each other, and block line of sight.
+
+### The pig 🐷
+- A pig appears in the middle of the map at the start, inside an open circle (700 px radius) where asteroids can't go. There's nowhere to hide while you go for it.
+- Touch it to eat it and gain **+25 max HP** (and heal 25), **+25 max energy**, or **+25% speed** (top speed and engine power). Pick with `pigStat`.
+- **A new pig appears 60 seconds after the last one was eaten.** Upgrades stack.
+
+### Winning
+- The last ship flying wins.
+- After 3 minutes, the ship with the most HP wins. A tie is a draw.
+- Kills go to whoever damaged the victim within the last 5 seconds (so knocking someone into a rock counts).
+
+## Fair play
+
+- Each bot runs in its own sandbox (a Web Worker). It can't see the page, the real game state, other bots or the internet. **The only thing it ever gets is its own `view`.**
+- **Time limit:** if `think()` takes longer than 20 ms, your ship gets no input that tick. If it doesn't answer for 3 seconds (say, an infinite loop), it's shut down and your ship drifts helplessly.
+- If your code crashes, that tick counts as "do nothing" and the error shows up in the Bot console.
+
+## Strategy ideas
+
+- **Dodge:** check `view.bullets` for enemy shots heading your way and sidestep them, or flick the shield on just before impact.
+- **Use cover:** put an asteroid between you and the enemy, and they can't see (or aim at) you.
+- **Bait bombs:** run away, drop a bomb, and lead your chaser over it.
+- **Pig timing:** the open middle is dangerous. Grab the pig when enemies are busy or far away. `view.pigRespawnIn` tells you when the next one appears.
+- **Energy management:** shooting and shielding share one energy pool. Don't empty it right before a fight.
+- **Remember enemies:** they disappear behind rocks, so track where they went with `memory`.
+
+## Running it yourself
+
+The game is a plain static website with no build step and no server code.
+
+- **Play locally:** in the game folder run `python3 -m http.server`, then open http://localhost:8000
+- **Quick fights in the terminal:** `node tools/fight.js bots/hunter.js my-bot.js --rounds 20` (Node 18+). It runs without the sandbox, so only use it on bots you trust.
+- **Tests:** `npm test`
+- **Hosting:** copy the whole folder to any web host (for example `ruybalid.com/ships/`). All paths are relative.

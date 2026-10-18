@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ship AI Arena</title>
+  <meta name="description" content="Program a spaceship AI and battle your friends' bots among moving asteroids.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M28 16 6 6l5 10-5 10z' fill='%23ff5c5c' stroke='white' stroke-width='2'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">SHIP AI ARENA <span class="logo-pig" aria-hidden="true">🐷</span></div>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="arena" role="tab">Arena</button>
+      <button class="tab" data-tab="lab" role="tab">Bot Lab</button>
+      <button class="tab" data-tab="tournament" role="tab">Tournament</button>
+      <button class="tab" data-tab="docs" role="tab">How to build a bot</button>
+    </nav>
+  </header>
+
+  <!-- ARENA -->
+  <section class="page active" id="page-arena">
+    <aside class="sidebar">
+      <div class="panel">
+        <h2>Match setup</h2>
+        <div id="slots"></div>
+        <label class="row">Seed
+          <input id="seed" type="text" value="1" spellcheck="false">
+          <button id="seed-random" class="icon-btn" title="Random seed">🎲</button>
+        </label>
+        <button id="start" class="primary wide">▶ Start match</button>
+      </div>
+
+      <div class="panel">
+        <h2>Controls</h2>
+        <div class="btn-row">
+          <button id="pause">⏸ Pause</button>
+          <button id="step" title="Advance one tick (while paused)">⏭ Step</button>
+        </div>
+        <label class="row">Speed
+          <select id="speed">
+            <option value="0.25">0.25×</option>
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+            <option value="8">8×</option>
+          </select>
+        </label>
+        <label class="row">Camera
+          <select id="camera"><option value="fit">Whole map</option></select>
+        </label>
+        <label class="check"><input id="show-vision" type="checkbox"> Show what the followed ship can see</label>
+        <label class="check"><input id="show-debug" type="checkbox" checked> Show bot debug drawings</label>
+        <div class="btn-row">
+          <button id="save-replay">💾 Save replay</button>
+          <button id="load-replay">📂 Load replay</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Ships</h2>
+        <div id="ship-cards" class="ship-cards"><p class="muted">Start a match to see ships here.</p></div>
+      </div>
+
+      <div class="panel">
+        <h2>Bot console <select id="console-ship" class="inline-select"></select></h2>
+        <div id="console" class="console"></div>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <canvas id="canvas"></canvas>
+      <div class="hud">
+        <div id="timer" class="timer">3:00</div>
+        <div id="pig-status" class="pig-status"></div>
+        <div id="replay-badge" class="replay-badge hidden">REPLAY</div>
+      </div>
+      <div id="killfeed" class="killfeed"></div>
+      <div id="banner" class="banner hidden"></div>
+      <div id="loading" class="loading hidden">Loading bots…</div>
+      <div class="stage-hint">Scroll to zoom · drag to pan · click a ship card to follow it</div>
+    </main>
+  </section>
+
+  <!-- BOT LAB -->
+  <section class="page" id="page-lab">
+    <aside class="sidebar">
+      <div class="panel">
+        <h2>Your bots</h2>
+        <div class="btn-row">
+          <button id="lab-new" class="primary">＋ New bot</button>
+          <button id="lab-upload">⬆ Upload .js</button>
+        </div>
+        <div id="lab-mine" class="bot-list"></div>
+        <h2>Sample bots</h2>
+        <div id="lab-builtin" class="bot-list"></div>
+      </div>
+    </aside>
+    <main class="lab-main">
+      <div class="lab-toolbar">
+        <input id="lab-name" type="text" maxlength="24" placeholder="Bot name" spellcheck="false">
+        <input id="lab-color" type="color" title="Ship color">
+        <span id="lab-saved" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="lab-duplicate">⧉ Make a copy</button>
+        <button id="lab-download">⬇ Download</button>
+        <button id="lab-share">🔗 Copy share link</button>
+        <button id="lab-delete" class="danger">🗑 Delete</button>
+      </div>
+      <div id="lab-readonly" class="notice hidden">This is a sample bot, so it's read-only. Click <b>Make a copy</b> to edit your own version.</div>
+      <div class="editor">
+        <pre id="lab-gutter" class="gutter" aria-hidden="true"></pre>
+        <textarea id="lab-code" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+      </div>
+      <div class="lab-bottom">
+        <div id="lab-check" class="check-line"></div>
+        <div class="fight-row">
+          Test against
+          <select id="lab-opponent"></select>
+          <button id="lab-fight" class="primary">⚔ Fight!</button>
+        </div>
+      </div>
+      <div id="lab-errors" class="console lab-errors"></div>
+    </main>
+  </section>
+
+  <!-- TOURNAMENT -->
+  <section class="page" id="page-tournament">
+    <aside class="sidebar">
+      <div class="panel">
+        <h2>Tournament</h2>
+        <p class="muted small">Runs many matches as fast as possible (no drawing), then shows who's really best. Every bot plays every spawn position.</p>
+        <div id="t-bots" class="bot-checks"></div>
+        <label class="row">Format
+          <select id="t-mode">
+            <option value="duel">1 vs 1 round robin</option>
+            <option value="ffa">Free-for-all (everyone at once)</option>
+          </select>
+        </label>
+        <label class="row">Rounds <input id="t-rounds" type="number" min="1" max="200" value="10"></label>
+        <label class="row">First seed <input id="t-seed" type="text" value="1"></label>
+        <div class="btn-row">
+          <button id="t-run" class="primary">🏁 Run tournament</button>
+          <button id="t-stop">⏹ Stop</button>
+        </div>
+        <div class="progress"><div id="t-progress-bar"></div></div>
+        <div id="t-status" class="muted small"></div>
+      </div>
+    </aside>
+    <main class="t-main">
+      <h2>Standings</h2>
+      <div id="t-standings"><p class="muted">Pick at least two bots and run a tournament.</p></div>
+      <h2>Matches</h2>
+      <div id="t-matches" class="t-matches"></div>
+    </main>
+  </section>
+
+  <!-- DOCS -->
+  <section class="page" id="page-docs">
+    <article id="docs" class="docs">Loading…</article>
+  </section>
+
+  <script>
+    // Browsers refuse to load the game's modules straight from a file
+    if (location.protocol === 'file:') {
+      document.body.innerHTML = '<p style="padding:2em;font:16px system-ui">This game has to be served by a web server. ' +
+        'In the game folder run <code>python3 -m http.server</code>, then open <a style="color:#5cc8ff" href="http://localhost:8000">http://localhost:8000</a>.</p>';
+    }
+  </script>
+  <script type="module" src="src/ui/app.js"></script>
+</body>
+</html>

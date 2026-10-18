@@ -1,0 +1,12 @@
+{
+  "name": "ship-ai-arena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Program a spaceship AI and battle your friends' bots.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "start": "python3 -m http.server 8000",
+    "fight": "node tools/fight.js"
+  }
+}
