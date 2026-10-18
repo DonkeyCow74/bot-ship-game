@@ -5,11 +5,12 @@ import { tryFire, updateBullets } from './projectile.js';
 import { tryDropBomb, updateBombs } from './bomb.js';
 import { updatePig } from './pig.js';
 import { moveShips, collideShips } from './collision.js';
+import { updateSaws } from './saw.js';
 
 export { createWorld } from './world.js';
 export { getView, hasLineOfSight } from './vision.js';
 
-const IDLE = Object.freeze({ thrust: 0, turn: 0, fire: false, bomb: false, shield: false, pigStat: 'hp' });
+const IDLE = Object.freeze({ thrust: 0, turn: 0, fire: false, bomb: false, shield: false, saw: false, dash: false, pigStat: 'hp' });
 
 function num(v, lo, hi) {
   v = Number(v);
@@ -27,6 +28,8 @@ export function sanitizeCommand(c) {
     fire: !!c.fire,
     bomb: !!c.bomb,
     shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false, // true = 'front'
+    saw: !!c.saw,
+    dash: !!c.dash,
     pigStat: PIG_STATS.includes(c.pigStat) ? c.pigStat : 'hp',
   };
 }
@@ -35,7 +38,8 @@ const SHIELDS = [false, 'front', 'back'];
 
 // Compact form for replays: [thrust, turn, flags]
 export function encodeCommand(c) {
-  const flags = (c.fire ? 1 : 0) | (c.bomb ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4);
+  const flags = (c.fire ? 1 : 0) | (c.bomb ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4) |
+    (c.saw ? 64 : 0) | (c.dash ? 128 : 0);
   return [c.thrust, c.turn, flags];
 }
 
@@ -45,6 +49,7 @@ export function decodeCommand(e) {
   return {
     thrust, turn,
     fire: !!(flags & 1), bomb: !!(flags & 2), shield: SHIELDS[(flags >> 2) & 3] || false,
+    saw: !!(flags & 64), dash: !!(flags & 128),
     pigStat: PIG_STATS[(flags >> 4) & 3] || 'hp',
   };
 }
@@ -63,11 +68,13 @@ export function step(world, commands) {
     controlShip(s, cmd);
     if (cmd.fire) tryFire(world, s);
     if (cmd.bomb) tryDropBomb(world, s);
+    if (s.dashTicks === C.DASH_TICKS) world.events.push({ type: 'dash', x: s.x, y: s.y, ship: s.id, angle: s.angle });
   }
 
   moveShips(world);
   moveAsteroids(world);
   collideShips(world);
+  updateSaws(world);
   updateBullets(world);
   updateBombs(world);
   updatePig(world, cmds);
@@ -79,6 +86,7 @@ export function step(world, commands) {
     s.alive = false;
     s.shieldOn = false;
     s.shieldSide = null;
+    s.sawOn = false;
     s.diedAt = world.tick;
     // Credit whoever hit them last within 5 seconds (covers being knocked into rocks)
     const killer = s.lastHitBy >= 0 && world.tick - s.lastHitTick <= 150 ? s.lastHitBy : -1;

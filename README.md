@@ -5,7 +5,7 @@ Program a spaceship AI, then watch it battle your friends' bots among moving ast
 - Every ship is identical and every bot gets the same `view` and helper functions. Strategy is the only edge.
 - Each bot runs in its own sandboxed Web Worker with a 20 ms time limit per tick.
 - Asteroids block line of sight. They break into smaller pieces after 3 hits.
-- Ships have a gun, 3 bombs and a front-or-back shield.
+- Ships have a gun, a close-range saw, a dash, 3 bombs and a front-or-back shield.
 - A pig spawns in the open middle of the map. Eat it for +40 HP, +40 energy or +40% speed. A new one appears 60 s later.
 - The game includes live matches, replays, fast headless tournaments and share links for bots.
 

@@ -35,6 +35,8 @@ Return an object. Every field is optional, and a missing field means "off" or "0
 | `fire` | true/false | Shoot the forward cannon. It costs energy, has a cooldown, and doesn't work while your shield is up. |
 | `bomb` | true/false | Drop a bomb behind you (3 per match). |
 | `shield` | `'front'`, `'back'` or `false` | Hold up a shield on the front or back of your ship. Raising it costs a big chunk of energy, and keeping it up drains more. (`true` means `'front'`.) |
+| `saw` | true/false | Spin the saw blade on your nose. It shreds ships and asteroids it touches and drains energy while it spins. |
+| `dash` | true/false | Burst forward at high speed for a moment. Costs energy, then has a cooldown. |
 | `pigStat` | `'hp'`, `'energy'` or `'speed'` | Which upgrade you get if you eat the pig this tick. Defaults to `'hp'`. |
 | `debug` | array | Shapes drawn on screen so you can see what your bot is thinking (see below). |
 
@@ -56,12 +58,14 @@ Coordinates are in pixels. `x` goes right and `y` goes **down**. Angles are radi
 | `bombs` | Bombs left |
 | `gunCooldown, bombCooldown` | Ticks until you can shoot or bomb again |
 | `shieldOn, shieldSide` | Is your shield up, and which side (`'front'`/`'back'`, or `null`)? |
+| `sawOn` | Is your saw spinning? |
+| `dashing, dashCooldown` | Are you mid-dash? How many ticks until you can dash again? |
 | `upgrades` | `{hp, energy, speed}`: how many pigs you've spent on each |
 | `id, name` | Your ship's number and name |
 
 ### `view.enemies`: ships you can see
 
-Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, upgrades}`.
+Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, sawOn, dashing, upgrades}`.
 
 > Enemies you can't see simply aren't in the list. Use `memory` to remember where you last saw someone.
 
@@ -146,6 +150,18 @@ debug: [
 - While it's up you can't shoot or regenerate energy. It drops when energy hits 0.
 - Enemies can see your shield and which side it's on (`enemy.shieldOn`, `enemy.shieldSide`). Hit them from the other side!
 
+### Saw
+- A spinning blade just past your nose. Its reach is tiny, about one ship-width past your nose, so you have to get right up close.
+- It does **45 damage per second** to any ship touching the blade. Grinding an asteroid for 0.35 s counts as one hit.
+- It drains **15 energy/s** while spinning, and you don't regenerate energy meanwhile. It stops when energy runs out.
+- You can't use it with your shield up, and a shield facing the blade blocks it.
+
+### Dash
+- It bursts you forward to **750 px/s** (about twice top speed) for 0.3 s, then you ease back down to normal speed.
+- It costs **25 energy**, and then you have to wait **3 seconds** before dashing again.
+- It only goes the way your nose points, so turn first. Good for dodging, closing in, or escaping.
+- Careful: crashing into something at dash speed hurts you, and the other ship takes damage too.
+
 ### Asteroids
 - Large ones break into 2 medium, medium into 2 small, and small ones crumble to nothing.
 - **Each stage takes 3 hits.** A bomb blast breaks a stage instantly.
@@ -173,7 +189,8 @@ debug: [
 - **Use cover:** put an asteroid between you and the enemy, and they can't see (or aim at) you.
 - **Bait bombs:** run away, drop a bomb, and lead your chaser over it.
 - **Pig timing:** the open middle is dangerous. Grab the pig when enemies are busy or far away. `view.pigRespawnIn` tells you when the next one appears.
-- **Energy management:** shooting and shielding share one energy pool. Don't empty it right before a fight.
+- **Close quarters:** the saw out-damages the gun up close, but you have to stay right on top of your target. Dash in, saw, dash out.
+- **Energy management:** shooting, shielding, sawing and dashing all share one energy pool. Don't empty it right before a fight.
 - **Remember enemies:** they disappear behind rocks, so track where they went with `memory`.
 
 ## Running it yourself

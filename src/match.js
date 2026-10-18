@@ -2,7 +2,7 @@
 import { createWorld, getView, step, sanitizeCommand, encodeCommand, decodeCommand } from './engine/sim.js';
 import { BotRunner } from './bots/botRunner.js';
 
-export const REPLAY_VERSION = 2; // 2: directional shield
+export const REPLAY_VERSION = 3; // 2: directional shield, 3: saw + dash
 
 export class LiveMatch {
   // entries: [{name, color, code}]

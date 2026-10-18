@@ -19,6 +19,9 @@ export function createShip(id, entry, x, y, angle) {
     bombCooldown: 0,
     shieldOn: false,
     shieldSide: null,          // 'front' | 'back' while the shield is up
+    sawOn: false,
+    dashTicks: 0,              // > 0 while dashing
+    dashCooldown: 0,
     alive: true,
     upgrades: { hp: 0, energy: 0, speed: 0 },
     lastCmd: null,
@@ -49,18 +52,40 @@ export function controlShip(ship, cmd) {
     ship.shieldSide = null;
   }
 
+  // No sawing from behind a shield
+  ship.sawOn = cmd.saw && !ship.shieldOn && ship.energy > 0;
+
+  const cos = Math.cos(ship.angle), sin = Math.sin(ship.angle);
   if (cmd.thrust > 0) {
     const a = ship.thrustAccel * cmd.thrust * dt;
-    ship.vx += Math.cos(ship.angle) * a;
-    ship.vy += Math.sin(ship.angle) * a;
+    ship.vx += cos * a;
+    ship.vy += sin * a;
   }
+
+  // Dash: bring our forward speed up to DASH_SPEED (sideways drift is kept)
+  if (ship.dashTicks > 0) ship.dashTicks--;
+  if (ship.dashCooldown > 0) ship.dashCooldown--;
+  if (cmd.dash && ship.dashCooldown <= 0 && ship.energy >= C.DASH_COST) {
+    ship.energy -= C.DASH_COST;
+    ship.dashTicks = C.DASH_TICKS;
+    ship.dashCooldown = C.DASH_COOLDOWN_TICKS;
+    const forward = ship.vx * cos + ship.vy * sin;
+    if (forward < C.DASH_SPEED) {
+      ship.vx += cos * (C.DASH_SPEED - forward);
+      ship.vy += sin * (C.DASH_SPEED - forward);
+    }
+  }
+
   const drag = 1 - C.DRAG * dt;
   ship.vx *= drag;
   ship.vy *= drag;
   const speed = Math.hypot(ship.vx, ship.vy);
-  if (speed > ship.maxSpeed) {
-    ship.vx *= ship.maxSpeed / speed;
-    ship.vy *= ship.maxSpeed / speed;
+  const limit = ship.dashTicks > 0 ? Math.max(C.DASH_SPEED, ship.maxSpeed) : ship.maxSpeed;
+  if (speed > limit) {
+    // Right after a dash, ease back down to normal top speed instead of stopping dead
+    const k = ship.dashTicks > 0 ? limit / speed : Math.max(limit / speed, 0.9);
+    ship.vx *= k;
+    ship.vy *= k;
   }
 
   if (ship.shieldOn) {
@@ -70,6 +95,8 @@ export function controlShip(ship, cmd) {
       ship.shieldOn = false;
       ship.shieldSide = null;
     }
+  } else if (ship.sawOn) {
+    ship.energy = Math.max(0, ship.energy - C.SAW_DRAIN * dt);
   } else {
     ship.energy = Math.min(ship.maxEnergy, ship.energy + C.ENERGY_REGEN * dt);
   }

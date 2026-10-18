@@ -46,6 +46,19 @@ export const C = Object.freeze({
   SHIELD_DRAIN: 20,          // energy per second while it's up
   SHIELD_ARC: (Math.PI * 2) / 3,
 
+  // Saw: a spinning blade on the nose for close-range fights. Hold it to keep it spinning.
+  SAW_DPS: 45,               // damage per second to a ship it touches
+  SAW_DRAIN: 15,             // energy per second while spinning (no energy regen meanwhile)
+  SAW_REACH: 12,             // the blade's center sits this far past the ship's edge
+  SAW_RADIUS: 20,
+  SAW_ASTEROID_SECONDS: 0.35, // grinding an asteroid this long = 1 hit
+
+  // Dash: a quick burst forward
+  DASH_COST: 25,             // energy
+  DASH_SPEED: 750,           // px/s along your facing for the burst
+  DASH_TICKS: 9,             // how long the burst lasts (0.3 s)
+  DASH_COOLDOWN_TICKS: 90,   // 3 seconds between dashes
+
   // Sensors
   SENSOR_RANGE: 1500,
 

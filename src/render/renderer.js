@@ -264,6 +264,7 @@ export class Renderer {
       const ang = lerpAngle(s.pa, s.angle, t);
       // Draw a little bigger when zoomed way out so ships stay visible
       const k = Math.max(1, 9 / (R * z));
+      if (s.dashTicks > 0) this.drawDashTrail(g, z, s, x, y, k);
       g.save();
       g.translate(x, y);
       g.rotate(ang);
@@ -288,6 +289,7 @@ export class Renderer {
       g.closePath();
       g.fill();
       g.stroke();
+      if (s.sawOn) this.drawSaw(g, z, k);
       g.restore();
 
       if (s.shieldOn) {
@@ -319,6 +321,54 @@ export class Renderer {
       g.textAlign = 'center';
       g.fillText(s.name, x, by - 4 / z);
     }
+  }
+
+  // Called inside the ship's rotated/scaled transform (nose points along +x)
+  drawSaw(g, z, k) {
+    const R = C.SHIP_RADIUS;
+    const cx = R + C.SAW_REACH, r = C.SAW_RADIUS;
+    const spin = performance.now() / 40;
+    g.save();
+    g.translate(cx, 0);
+    g.rotate(spin);
+    g.beginPath();
+    const teeth = 10;
+    for (let i = 0; i < teeth * 2; i++) {
+      const a = (i / (teeth * 2)) * TAU;
+      const rr = i % 2 ? r * 0.72 : r;
+      g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    g.closePath();
+    g.fillStyle = '#c9ced9';
+    g.fill();
+    g.strokeStyle = '#5b6070';
+    g.lineWidth = 1.5 / z / k;
+    g.stroke();
+    g.fillStyle = '#3a3e4a';
+    g.beginPath(); g.arc(0, 0, r * 0.3, 0, TAU); g.fill();
+    g.restore();
+  }
+
+  drawDashTrail(g, z, s, x, y, k) {
+    const sp = Math.hypot(s.vx, s.vy) || 1;
+    const ux = s.vx / sp, uy = s.vy / sp;
+    const len = sp * 0.18;
+    const px = -uy, py = ux;
+    g.save();
+    g.lineCap = 'round';
+    for (const off of [-0.6, 0, 0.6]) {
+      const ox = px * off * C.SHIP_RADIUS * k, oy = py * off * C.SHIP_RADIUS * k;
+      const grad = g.createLinearGradient(x + ox, y + oy, x + ox - ux * len, y + oy - uy * len);
+      grad.addColorStop(0, 'rgba(180, 240, 255, 0.8)');
+      grad.addColorStop(1, 'rgba(180, 240, 255, 0)');
+      g.strokeStyle = grad;
+      g.lineWidth = (off === 0 ? 5 : 3) / z;
+      g.beginPath();
+      g.moveTo(x + ox, y + oy);
+      g.lineTo(x + ox - ux * len, y + oy - uy * len);
+      g.stroke();
+    }
+    g.restore();
   }
 
   drawVision(g, z, world, id, t) {

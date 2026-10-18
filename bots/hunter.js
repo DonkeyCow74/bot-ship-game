@@ -58,6 +58,8 @@ function think(view, memory) {
   // Raising the shield costs a big chunk of energy, so only do it for a real threat
   const danger = view.bullets.find((b) => !b.mine && bulletThreat(b, me, 0.3));
   if (danger && me.energy > K.SHIELD_MIN_ENERGY) out.shield = shieldSideFor(me, danger) || false;
+  // A shot from the side can't be shielded: dash out of the way instead
+  if (danger && !out.shield && me.dashCooldown === 0 && me.energy > K.DASH_COST) out.dash = true;
 
   if (target) {
     const d = distance(me, target);
@@ -66,6 +68,19 @@ function think(view, memory) {
     const err = Math.abs(angleDiff(me.angle, aimAngle));
     out.turn = turnToward(me, aimAngle);
     out.thrust = err < 0.6 ? (d > 600 ? 1 : d > 350 ? 0.4 : 0) : 0;
+
+    // Brawl: if they're close and we have energy, ram in with the saw spinning
+    const facing = Math.abs(angleDiff(me.angle, angleTo(me, target))) < 0.5;
+    if (d < 260 && me.energy > 30) {
+      out.turn = turnToward(me, angleTo(me, target));
+      // Ease in (don't crash into them, that hurts us too) and stay inside the blade's reach
+      const closing = ((target.vx - me.vx) * (me.x - target.x) + (target.vy - me.vy) * (me.y - target.y)) / d;
+      out.thrust = facing && d > 55 && closing < 120 ? 0.5 : 0;
+      out.saw = facing && d < 80;
+    }
+    // Dash to close the gap on a far-off, lined-up target (from far enough away that we
+    // slow down before reaching them: crashing at dash speed hurts us as much as them)
+    if (facing && d > 700 && d < 1100 && me.dashCooldown === 0 && me.energy > 70) out.dash = true;
     const clear = lineOfSight(view, me, aim);
     const tolerance = 0.05 + 25 / d;
     out.fire = !out.shield && clear && err < tolerance && d < K.BULLET_RANGE * 0.85 &&

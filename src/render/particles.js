@@ -61,6 +61,13 @@ export class Particles {
           this.burst(e.x, e.y, 40, '#ff9ec4', 260, 1, 5);
           this.text(e.x, e.y - 40, pigBonusLabel(e.stat).toUpperCase(), '#ff9ec4');
           break;
+        case 'sawHit':
+          if (Math.random() < 0.5) this.burst(e.x, e.y, 3, Math.random() < 0.5 ? '#ffd27a' : '#ffffff', 260, 0.25, 2);
+          break;
+        case 'dash':
+          this.burst(e.x - Math.cos(e.angle) * 20, e.y - Math.sin(e.angle) * 20, 14, '#b4f0ff', 160, 0.4, 3);
+          this.ring(e.x, e.y, 50, '#b4f0ff', 0.3);
+          break;
         case 'pigSpawn':
           this.ring(e.x, e.y, 120, '#ff9ec4', 0.8);
           break;
