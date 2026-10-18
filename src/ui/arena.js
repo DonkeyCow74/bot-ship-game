@@ -309,7 +309,7 @@ export class Arena {
       card.classList.toggle('dead', !s.alive);
       card.querySelector('.hp div').style.width = `${(100 * Math.max(0, s.hp)) / s.maxHp}%`;
       card.querySelector('.energy div').style.width = `${(100 * s.energy) / s.maxEnergy}%`;
-      let status = s.alive ? (s.shieldOn ? '🛡' : '') : '☠';
+      let status = s.alive ? (s.shieldOn ? `🛡 ${s.shieldSide}` : '') : '☠';
       if (r?.status === 'error') status += ' ⚠ load error';
       else if (r?.status === 'killed') status += ' ⚠ frozen';
       else if (r && (r.errors || r.timeouts)) status += ` ⚠ ${r.errors + r.timeouts}`;

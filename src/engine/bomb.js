@@ -55,7 +55,7 @@ export function detonateBomb(world, bomb) {
     const d = Math.hypot(s.x - bomb.x, s.y - bomb.y) - C.SHIP_RADIUS;
     if (d > R) continue;
     const falloff = 1 - 0.5 * Math.max(0, d) / R;
-    damageShip(world, s, C.BOMB_DAMAGE * falloff, bomb.owner, 'bomb');
+    damageShip(world, s, C.BOMB_DAMAGE * falloff, bomb.owner, 'bomb', bomb.x, bomb.y);
   }
   // Snapshot: pieces created by this blast shouldn't be broken again by it
   for (const a of world.asteroids.slice()) {

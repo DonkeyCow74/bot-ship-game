@@ -39,9 +39,12 @@ export const C = Object.freeze({
   BOMB_DRAG: 1.5,
   BOMB_ENEMY_VISIBLE_RANGE: 600, // enemy bombs are stealthy: only seen this close
 
-  // Shield (blocks 100% of damage, no firing while it's up)
-  SHIELD_DRAIN: 25,          // energy per second
-  SHIELD_MIN_ENERGY: 10,     // needed to switch it on
+  // Shield: a 120° arc on the front OR back of the ship. Blocks 100% of damage coming
+  // from that side. No firing while it's up.
+  SHIELD_ACTIVATE_COST: 35,  // energy paid up front every time you raise it
+  SHIELD_MIN_ENERGY: 50,     // need this much to raise it (so it lasts at least a moment)
+  SHIELD_DRAIN: 25,          // energy per second while it's up
+  SHIELD_ARC: (Math.PI * 2) / 3,
 
   // Sensors
   SENSOR_RANGE: 1500,

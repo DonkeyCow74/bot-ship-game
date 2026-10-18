@@ -38,12 +38,15 @@ function think(view, memory) {
     if (!target || e.hp < target.hp) target = e; // pick on the weakest
   }
 
-  // Shield if any enemy bullet is about to hit
+  // Shield (on the side the bullet comes from) if one is about to hit. Keep it up
+  // once it's raised, since raising it again costs another chunk of energy.
   for (const b of view.bullets) {
     if (b.mine) continue;
     const px = b.x - me.x, py = b.y - me.y, vx = b.vx - me.vx, vy = b.vy - me.vy;
     const t = -(px * vx + py * vy) / (vx * vx + vy * vy || 1);
-    if (t > 0 && t < 0.3 && Math.hypot(px + vx * t, py + vy * t) < 32) out.shield = me.energy > 15;
+    if (t > 0 && t < 0.3 && Math.hypot(px + vx * t, py + vy * t) < 32) {
+      if (me.shieldOn || me.energy > K.SHIELD_MIN_ENERGY) out.shield = shieldSideFor(me, b) || false;
+    }
   }
 
   if (target) {
@@ -71,7 +74,9 @@ function think(view, memory) {
     }
 
     const err = Math.abs(angleDiff(me.angle, aimAngle));
-    out.fire = !out.shield && !target.shieldOn && err < 0.03 + 12 / d &&
+    // Don't waste shots into their shield, but a shield facing the other way is fair game
+    const blocked = target.shieldOn && shieldSideFor(target, me) === target.shieldSide;
+    out.fire = !out.shield && !blocked && err < 0.03 + 12 / d &&
       lineOfSight(view, me, aim) && d < K.BULLET_RANGE * 0.9 && me.energy > 20;
     out.debug.push({ type: 'line', x: me.x, y: me.y, x2: aim.x, y2: aim.y, color: '#5cc8ff' });
     out.debug.push({ type: 'text', x: me.x, y: me.y - 40, text: hurt ? 'hiding' : 'sniping', color: '#5cc8ff' });

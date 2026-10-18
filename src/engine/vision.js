@@ -28,7 +28,7 @@ export function getView(world, shipId) {
     enemies.push({
       id: s.id, name: s.name,
       x: r1(s.x), y: r1(s.y), vx: r1(s.vx), vy: r1(s.vy), angle: s.angle,
-      hp: r1(s.hp), maxHp: s.maxHp, shieldOn: s.shieldOn,
+      hp: r1(s.hp), maxHp: s.maxHp, shieldOn: s.shieldOn, shieldSide: s.shieldSide,
       upgrades: { ...s.upgrades },
     });
   }
@@ -75,7 +75,7 @@ export function getView(world, shipId) {
       energy: r1(me.energy), maxEnergy: me.maxEnergy,
       maxSpeed: me.maxSpeed, thrustAccel: me.thrustAccel,
       bombs: me.bombs, gunCooldown: me.gunCooldown, bombCooldown: me.bombCooldown,
-      shieldOn: me.shieldOn,
+      shieldOn: me.shieldOn, shieldSide: me.shieldSide,
       upgrades: { ...me.upgrades },
     },
     enemies,

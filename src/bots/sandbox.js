@@ -84,7 +84,8 @@ const cleanCmd = (c) => {
   return {
     thrust: Number(c.thrust) || 0,
     turn: Number(c.turn) || 0,
-    fire: !!c.fire, bomb: !!c.bomb, shield: !!c.shield,
+    fire: !!c.fire, bomb: !!c.bomb,
+    shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false,
     pigStat: typeof c.pigStat === 'string' ? c.pigStat : 'hp',
     debug: cleanDebug(c.debug),
   };

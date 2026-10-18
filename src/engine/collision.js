@@ -22,14 +22,14 @@ export function collideShips(world) {
     if (!s.alive) continue;
 
     // Walls
-    let impact = 0;
-    if (s.x < R) { impact = Math.max(impact, -s.vx); s.x = R; s.vx = Math.abs(s.vx) * BOUNCE; }
-    if (s.x > C.ARENA_W - R) { impact = Math.max(impact, s.vx); s.x = C.ARENA_W - R; s.vx = -Math.abs(s.vx) * BOUNCE; }
-    if (s.y < R) { impact = Math.max(impact, -s.vy); s.y = R; s.vy = Math.abs(s.vy) * BOUNCE; }
-    if (s.y > C.ARENA_H - R) { impact = Math.max(impact, s.vy); s.y = C.ARENA_H - R; s.vy = -Math.abs(s.vy) * BOUNCE; }
+    let impact = 0, wx = s.x, wy = s.y; // (wx, wy) = point on the wall we hit
+    if (s.x < R) { impact = Math.max(impact, -s.vx); s.x = R; s.vx = Math.abs(s.vx) * BOUNCE; wx = 0; }
+    if (s.x > C.ARENA_W - R) { impact = Math.max(impact, s.vx); s.x = C.ARENA_W - R; s.vx = -Math.abs(s.vx) * BOUNCE; wx = C.ARENA_W; }
+    if (s.y < R) { impact = Math.max(impact, -s.vy); s.y = R; s.vy = Math.abs(s.vy) * BOUNCE; wy = 0; }
+    if (s.y > C.ARENA_H - R) { impact = Math.max(impact, s.vy); s.y = C.ARENA_H - R; s.vy = -Math.abs(s.vy) * BOUNCE; wy = C.ARENA_H; }
     if (impact > 0) {
       const dmg = impactDamage(impact);
-      if (dmg > 0) damageShip(world, s, dmg, -1, 'wall');
+      if (dmg > 0) damageShip(world, s, dmg, -1, 'wall', wx, wy);
       world.events.push({ type: 'bump', x: s.x, y: s.y });
     }
 
@@ -49,7 +49,7 @@ export function collideShips(world) {
         s.vx -= (1 + BOUNCE) * vn * nx;
         s.vy -= (1 + BOUNCE) * vn * ny;
         const dmg = impactDamage(-vn);
-        if (dmg > 0) damageShip(world, s, dmg, -1, 'asteroid');
+        if (dmg > 0) damageShip(world, s, dmg, -1, 'asteroid', a.x, a.y);
         world.events.push({ type: 'bump', x: s.x - nx * R, y: s.y - ny * R });
       }
     }
@@ -79,8 +79,8 @@ export function collideShips(world) {
         b.vx -= imp * nx; b.vy -= imp * ny;
         const dmg = impactDamage(-vn);
         if (dmg > 0) {
-          damageShip(world, a, dmg, b.id, 'ram');
-          damageShip(world, b, dmg, a.id, 'ram');
+          damageShip(world, a, dmg, b.id, 'ram', b.x, b.y);
+          damageShip(world, b, dmg, a.id, 'ram', a.x, a.y);
         }
         world.events.push({ type: 'bump', x: a.x + nx * R, y: a.y + ny * R });
       }

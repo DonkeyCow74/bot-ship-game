@@ -83,6 +83,16 @@ export function lineOfSight(view, a, b) {
   return raycast(view, a.x, a.y, b.x, b.y) === null;
 }
 
+/**
+ * Which shield side ('front' or 'back') would block a hit coming from `point`, or null if
+ * it's coming from the side where neither 120° arc reaches. Use: shield: shieldSideFor(me, bullet)
+ */
+export function shieldSideFor(self, point) {
+  const d = Math.abs(angleDiff(self.angle, angleTo(self, point)));
+  const half = Math.PI / 3;
+  return d <= half ? 'front' : d >= Math.PI - half ? 'back' : null;
+}
+
 /** Where `obj` (with x, y, vx, vy) will be after `seconds`, assuming it keeps drifting. */
 export function predict(obj, seconds) {
   return { x: obj.x + (obj.vx || 0) * seconds, y: obj.y + (obj.vy || 0) * seconds };

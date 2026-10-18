@@ -124,20 +124,50 @@ export class Renderer {
       return;
     }
     const x = lerp(pig.px, pig.x, t), y = lerp(pig.py, pig.y, t);
-    const bob = Math.sin(performance.now() / 180) * 3;
-    const s = pigSprite();
-    const px = 4.2; // world units per sprite pixel
-    // Glow
+    // Dance! One hop per beat, swapping leg poses, swaying, and squashing on landing.
+    const time = performance.now() / 1000;
+    const BEAT = 0.42;
+    const beat = Math.floor(time / BEAT);
+    const phase = (time % BEAT) / BEAT;     // 0..1 through this beat
+    const s = pigSprite(beat);
+    // Never smaller than ~14 screen px, so you can always spot it
+    const scale = Math.max(4.2, 14 / s.width / z);
+    const hop = Math.sin(phase * Math.PI) * 5 * scale;
+    const squash = phase < 0.15 ? 1 - (0.15 - phase) * 1.4 : 1; // flattens right as it lands
+    const sway = Math.sin((time / BEAT) * Math.PI) * 0.22;
+
     const glow = g.createRadialGradient(x, y, 5, x, y, 70);
     glow.addColorStop(0, 'rgba(255, 158, 196, 0.35)');
     glow.addColorStop(1, 'rgba(255, 158, 196, 0)');
     g.fillStyle = glow;
     g.beginPath(); g.arc(x, y, 70, 0, TAU); g.fill();
+    // Shadow shrinks while it's in the air
+    const h = s.height * scale;
+    g.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    g.beginPath();
+    g.ellipse(x, y + h / 2, s.width * scale * 0.4 * (1 - hop / (12 * scale)), 2 * scale, 0, 0, TAU);
+    g.fill();
+
+    g.save();
+    g.translate(x, y + h / 2 - hop);   // pivot at the feet
+    g.rotate(sway);
+    g.scale(1 / squash, squash);
     g.imageSmoothingEnabled = false;
-    // Never smaller than ~14 screen px, so you can always spot it
-    const scale = Math.max(px, 14 / s.width / z);
-    g.drawImage(s, x - (s.width * scale) / 2, y - (s.height * scale) / 2 + bob, s.width * scale, s.height * scale);
+    g.drawImage(s, (-s.width * scale) / 2, -h, s.width * scale, h);
     g.imageSmoothingEnabled = true;
+    g.restore();
+
+    // Music notes float up, alternating sides
+    g.textAlign = 'center';
+    g.font = `${Math.round(5 * scale)}px system-ui, sans-serif`;
+    for (let i = 0; i < 3; i++) {
+      const life = ((time / (BEAT * 2)) + i / 3) % 1;
+      const side = (Math.floor(time / (BEAT * 2) + i / 3) + i) % 2 ? 1 : -1;
+      g.globalAlpha = Math.sin(life * Math.PI);
+      g.fillStyle = i % 2 ? '#ff9ec4' : '#ffd0e2';
+      g.fillText(i % 2 ? '♪' : '♫', x + side * (8 + life * 4) * scale, y - h * 0.4 - life * 10 * scale);
+    }
+    g.globalAlpha = 1;
   }
 
   shapeFor(a) {
@@ -261,10 +291,21 @@ export class Renderer {
       g.restore();
 
       if (s.shieldOn) {
-        g.strokeStyle = 'rgba(127, 243, 255, 0.85)';
-        g.fillStyle = 'rgba(127, 243, 255, 0.12)';
-        g.lineWidth = 3 / z;
-        g.beginPath(); g.arc(x, y, (R + 10) * k, 0, TAU); g.fill(); g.stroke();
+        // An arc on the protected side only
+        const face = ang + (s.shieldSide === 'back' ? Math.PI : 0);
+        const half = C.SHIELD_ARC / 2;
+        const rad = (R + 10) * k;
+        g.fillStyle = 'rgba(127, 243, 255, 0.15)';
+        g.beginPath();
+        g.moveTo(x, y);
+        g.arc(x, y, rad, face - half, face + half);
+        g.closePath();
+        g.fill();
+        g.strokeStyle = 'rgba(127, 243, 255, 0.95)';
+        g.lineWidth = Math.max(4, 3 / z);
+        g.lineCap = 'round';
+        g.beginPath(); g.arc(x, y, rad, face - half, face + half); g.stroke();
+        g.lineCap = 'butt';
       }
 
       // Name + HP bar (constant size on screen)

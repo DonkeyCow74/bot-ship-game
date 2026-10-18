@@ -110,19 +110,50 @@ test('ships bounce off walls', () => {
   assert.ok(s.vx > 0);
 });
 
-test('shield blocks damage, drains energy, and stops firing', () => {
+test('front shield blocks hits from the front, costs a chunk to raise, and stops firing', () => {
   const w = emptyWorld();
   const [me, them] = w.ships;
-  me.x = 1000; me.y = 1000; me.vx = me.vy = 0;
+  me.x = 1000; me.y = 1000; me.vx = me.vy = 0; me.angle = 0; // facing right, toward them
   them.x = 1300; them.y = 1000; them.angle = Math.PI; them.vx = them.vy = 0;
-  for (let i = 0; i < 20; i++) step(w, [{ shield: true, fire: true }, { fire: true }]);
+  step(w, [{ shield: 'front', fire: true }, null]);
+  assert.ok(me.shieldOn);
+  assert.equal(me.shieldSide, 'front');
+  assert.ok(me.energy < C.SHIP_ENERGY - C.SHIELD_ACTIVATE_COST + 1, 'paid the activation cost');
+  for (let i = 0; i < 20; i++) step(w, [{ shield: 'front', fire: true }, { fire: true }]);
   assert.equal(me.hp, C.SHIP_HP);
   assert.ok(me.stats.blocked > 0);
   assert.equal(me.stats.shots, 0);
-  assert.ok(me.energy < C.SHIP_ENERGY - 15);
   // Shield runs out of energy and drops
-  for (let i = 0; i < 200; i++) step(w, [{ shield: true }, { fire: true }]);
+  for (let i = 0; i < 200; i++) step(w, [{ shield: 'front' }, { fire: true }]);
   assert.ok(me.hp < C.SHIP_HP);
+});
+
+test('back shield does not block hits from the front', () => {
+  const w = emptyWorld();
+  const [me, them] = w.ships;
+  me.x = 1000; me.y = 1000; me.vx = me.vy = 0; me.angle = 0;
+  them.x = 1300; them.y = 1000; them.angle = Math.PI; them.vx = them.vy = 0;
+  for (let i = 0; i < 30; i++) step(w, [{ shield: 'back' }, { fire: true }]);
+  assert.equal(me.shieldSide, 'back');
+  assert.ok(me.hp < C.SHIP_HP);
+  assert.equal(me.stats.blocked, 0);
+  // Turn around: now the back shield faces them
+  me.angle = Math.PI;
+  const hp = me.hp;
+  for (let i = 0; i < 20; i++) step(w, [{ shield: 'back' }, { fire: true }]);
+  assert.equal(me.hp, hp);
+  assert.ok(me.stats.blocked > 0);
+});
+
+test('shield needs enough energy to raise', () => {
+  const w = emptyWorld();
+  const me = w.ships[0];
+  me.energy = C.SHIELD_MIN_ENERGY - 1;
+  step(w, [{ shield: true }, null]);
+  assert.equal(me.shieldOn, false);
+  me.energy = C.SHIELD_MIN_ENERGY + 5;
+  step(w, [{ shield: true }, null]); // true means 'front'
+  assert.equal(me.shieldSide, 'front');
 });
 
 test('pig zone stays clear of asteroids', () => {
@@ -171,6 +202,8 @@ test('pig gives the chosen upgrade once, then respawns after 60 s', () => {
 test('bad commands are sanitized', () => {
   assert.deepEqual(sanitizeCommand({ thrust: 99, turn: -Infinity, fire: 'yes', pigStat: 'lasers' }),
     { thrust: 1, turn: 0, fire: true, bomb: false, shield: false, pigStat: 'hp' });
+  assert.equal(sanitizeCommand({ shield: 'back' }).shield, 'back');
+  assert.equal(sanitizeCommand({ shield: 'sideways' }).shield, 'front');
   assert.equal(sanitizeCommand(null).thrust, 0);
   assert.equal(sanitizeCommand({ thrust: NaN }).thrust, 0);
 });

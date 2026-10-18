@@ -55,8 +55,9 @@ function think(view, memory) {
   }
   if (target) memory.lastSeen = { x: target.x, y: target.y, tick: view.tick };
 
-  const danger = view.bullets.some((b) => !b.mine && bulletThreat(b, me, 0.35));
-  if (danger && me.energy > 25) out.shield = true;
+  // Raising the shield costs a big chunk of energy, so only do it for a real threat
+  const danger = view.bullets.find((b) => !b.mine && bulletThreat(b, me, 0.3));
+  if (danger && me.energy > K.SHIELD_MIN_ENERGY) out.shield = shieldSideFor(me, danger) || false;
 
   if (target) {
     const d = distance(me, target);

@@ -26,14 +26,16 @@ export function sanitizeCommand(c) {
     turn: num(c.turn, -1, 1),
     fire: !!c.fire,
     bomb: !!c.bomb,
-    shield: !!c.shield,
+    shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false, // true = 'front'
     pigStat: PIG_STATS.includes(c.pigStat) ? c.pigStat : 'hp',
   };
 }
 
+const SHIELDS = [false, 'front', 'back'];
+
 // Compact form for replays: [thrust, turn, flags]
 export function encodeCommand(c) {
-  const flags = (c.fire ? 1 : 0) | (c.bomb ? 2 : 0) | (c.shield ? 4 : 0) | (PIG_STATS.indexOf(c.pigStat) << 3);
+  const flags = (c.fire ? 1 : 0) | (c.bomb ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4);
   return [c.thrust, c.turn, flags];
 }
 
@@ -42,8 +44,8 @@ export function decodeCommand(e) {
   const [thrust, turn, flags] = e;
   return {
     thrust, turn,
-    fire: !!(flags & 1), bomb: !!(flags & 2), shield: !!(flags & 4),
-    pigStat: PIG_STATS[(flags >> 3) & 3] || 'hp',
+    fire: !!(flags & 1), bomb: !!(flags & 2), shield: SHIELDS[(flags >> 2) & 3] || false,
+    pigStat: PIG_STATS[(flags >> 4) & 3] || 'hp',
   };
 }
 
@@ -76,6 +78,7 @@ export function step(world, commands) {
     s.hp = 0;
     s.alive = false;
     s.shieldOn = false;
+    s.shieldSide = null;
     s.diedAt = world.tick;
     // Credit whoever hit them last within 5 seconds (covers being knocked into rocks)
     const killer = s.lastHitBy >= 0 && world.tick - s.lastHitTick <= 150 ? s.lastHitBy : -1;

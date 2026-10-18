@@ -57,7 +57,7 @@ export function updateBullets(world) {
       b.y = y1 + (y2 - y1) * bestT;
       if (kind === 'ship') {
         const shooter = world.ships[b.owner];
-        damageShip(world, hit, C.BULLET_DAMAGE, b.owner, 'bullet');
+        damageShip(world, hit, C.BULLET_DAMAGE, b.owner, 'bullet', x1, y1);
         if (shooter) shooter.stats.hits++;
       } else if (kind === 'asteroid') {
         hitAsteroid(world, hit);

@@ -34,7 +34,7 @@ Return an object. Every field is optional, and a missing field means "off" or "0
 | `turn` | -1 to 1 | Turn speed. Positive turns clockwise on screen (angle goes up), negative turns counter-clockwise. |
 | `fire` | true/false | Shoot the forward cannon. It costs energy, has a cooldown, and doesn't work while your shield is up. |
 | `bomb` | true/false | Drop a bomb behind you (3 per match). |
-| `shield` | true/false | Hold the shield up. It blocks **all** damage but drains energy fast. |
+| `shield` | `'front'`, `'back'` or `false` | Hold up a shield on the front or back of your ship. Raising it costs a big chunk of energy, and keeping it up drains more. (`true` means `'front'`.) |
 | `pigStat` | `'hp'`, `'energy'` or `'speed'` | Which upgrade you get if you eat the pig this tick. Defaults to `'hp'`. |
 | `debug` | array | Shapes drawn on screen so you can see what your bot is thinking (see below). |
 
@@ -55,13 +55,13 @@ Coordinates are in pixels. `x` goes right and `y` goes **down**. Angles are radi
 | `maxSpeed, thrustAccel` | Your current top speed and engine power (pig upgrades raise these) |
 | `bombs` | Bombs left |
 | `gunCooldown, bombCooldown` | Ticks until you can shoot or bomb again |
-| `shieldOn` | Is your shield up right now? |
+| `shieldOn, shieldSide` | Is your shield up, and which side (`'front'`/`'back'`, or `null`)? |
 | `upgrades` | `{hp, energy, speed}`: how many pigs you've spent on each |
 | `id, name` | Your ship's number and name |
 
 ### `view.enemies`: ships you can see
 
-Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, upgrades}`.
+Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, upgrades}`.
 
 > Enemies you can't see simply aren't in the list. Use `memory` to remember where you last saw someone.
 
@@ -103,6 +103,7 @@ Every bot can call these directly:
 | `leadTarget(shooter, target, bulletSpeed)` | The point to aim at so a bullet hits a moving target: `{x, y, time}` or `null` |
 | `raycast(view, x1, y1, x2, y2)` | The first visible asteroid blocking that line: `{asteroid, distance}` or `null` |
 | `lineOfSight(view, a, b)` | `true` if no visible asteroid blocks the line from `a` to `b` |
+| `shieldSideFor(self, point)` | `'front'` or `'back'`: whichever shield side would block a hit coming from `point`. Returns `null` if it's coming from the side, where neither shield reaches |
 | `predict(obj, seconds)` | Where something will be if it keeps drifting |
 | `clamp(v, lo, hi)` | Keeps a number between `lo` and `hi` |
 
@@ -140,9 +141,10 @@ debug: [
 - The blast (240 px) does up to 45 damage to **every** ship in range, including yours, so get clear! It also breaks asteroids and sets off other bombs.
 
 ### Shield
-- Blocks 100% of damage. It drains 25 energy/s, so a full tank lasts about 4 seconds.
-- You need at least 10 energy to turn it on. While it's up you can't shoot, and it drops when energy hits 0.
-- Enemies can see when your shield is up (`enemy.shieldOn`).
+- The shield covers a **120° arc** on either the **front** or the **back** of your ship, never both. It blocks 100% of hits coming from inside that arc. Hits from the sides get through.
+- **Raising it costs 35 energy up front**, then 25 energy/s while it's up. You need at least 50 energy to raise it, so you can only use it a few times. Holding the shield button down nonstop just burns energy. Flipping it between front and back while it's up is free.
+- While it's up you can't shoot or regenerate energy. It drops when energy hits 0.
+- Enemies can see your shield and which side it's on (`enemy.shieldOn`, `enemy.shieldSide`). Hit them from the other side!
 
 ### Asteroids
 - Large ones break into 2 medium, medium into 2 small, and small ones crumble to nothing.
@@ -167,7 +169,7 @@ debug: [
 
 ## Strategy ideas
 
-- **Dodge:** check `view.bullets` for enemy shots heading your way and sidestep them, or flick the shield on just before impact.
+- **Dodge:** check `view.bullets` for enemy shots heading your way and sidestep them, or raise the shield on the side the shot is coming from (`shieldSideFor(me, bullet)`) just before it hits.
 - **Use cover:** put an asteroid between you and the enemy, and they can't see (or aim at) you.
 - **Bait bombs:** run away, drop a bomb, and lead your chaser over it.
 - **Pig timing:** the open middle is dangerous. Grab the pig when enemies are busy or far away. `view.pigRespawnIn` tells you when the next one appears.
