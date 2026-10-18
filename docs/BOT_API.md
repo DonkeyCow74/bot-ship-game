@@ -142,7 +142,7 @@ debug: [
 
 ### Shield
 - The shield covers a **120° arc** on either the **front** or the **back** of your ship, never both. It blocks 100% of hits coming from inside that arc. Hits from the sides get through.
-- **Raising it costs 35 energy up front**, then 25 energy/s while it's up. You need at least 50 energy to raise it, so you can only use it a few times. Holding the shield button down nonstop just burns energy. Flipping it between front and back while it's up is free.
+- **Raising it costs 20 energy up front**, then 20 energy/s while it's up. You need at least 30 energy to raise it, so use it wisely. Holding the shield button down nonstop just burns energy. Flipping it between front and back while it's up is free.
 - While it's up you can't shoot or regenerate energy. It drops when energy hits 0.
 - Enemies can see your shield and which side it's on (`enemy.shieldOn`, `enemy.shieldSide`). Hit them from the other side!
 
@@ -153,7 +153,7 @@ debug: [
 
 ### The pig 🐷
 - A pig appears in the middle of the map at the start, inside an open circle (700 px radius) where asteroids can't go. There's nowhere to hide while you go for it.
-- Touch it to eat it and gain **+25 max HP** (and heal 25), **+25 max energy**, or **+25% speed** (top speed and engine power). Pick with `pigStat`.
+- Touch it to eat it and gain **+40 max HP** (and heal 40), **+40 max energy**, or **+40% speed** (top speed and engine power). Pick with `pigStat`.
 - **A new pig appears 60 seconds after the last one was eaten.** Upgrades stack.
 
 ### Winning

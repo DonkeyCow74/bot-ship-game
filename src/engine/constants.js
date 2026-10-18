@@ -41,9 +41,9 @@ export const C = Object.freeze({
 
   // Shield: a 120° arc on the front OR back of the ship. Blocks 100% of damage coming
   // from that side. No firing while it's up.
-  SHIELD_ACTIVATE_COST: 35,  // energy paid up front every time you raise it
-  SHIELD_MIN_ENERGY: 50,     // need this much to raise it (so it lasts at least a moment)
-  SHIELD_DRAIN: 25,          // energy per second while it's up
+  SHIELD_ACTIVATE_COST: 20,  // energy paid up front every time you raise it
+  SHIELD_MIN_ENERGY: 30,     // need this much to raise it (so it lasts at least a moment)
+  SHIELD_DRAIN: 20,          // energy per second while it's up
   SHIELD_ARC: (Math.PI * 2) / 3,
 
   // Sensors
@@ -67,9 +67,14 @@ export const C = Object.freeze({
   PIG_ORBIT_RADIUS: 140,
   PIG_ORBIT_SPEED: 0.35,     // rad/s
   PIG_RESPAWN_TICKS: 1800,   // 60 seconds after it is eaten
-  PIG_BONUS: 25,             // +25 max HP or +25 max energy
-  PIG_SPEED_BONUS: 0.25,     // +25% of base max speed and thrust
+  PIG_BONUS: 40,             // +40 max HP (and heals 40) or +40 max energy
+  PIG_SPEED_BONUS: 0.4,      // +40% of base max speed and thrust
 });
 
 export const PIG_STATS = ['hp', 'energy', 'speed'];
+
+// "+40 HP", "+40% SPEED"... for on-screen messages
+export function pigBonusLabel(stat) {
+  return stat === 'speed' ? `+${Math.round(C.PIG_SPEED_BONUS * 100)}% speed` : `+${C.PIG_BONUS} ${stat === 'hp' ? 'HP' : stat}`;
+}
 export const MATCH_TICKS = C.MATCH_SECONDS * C.TICK_RATE;

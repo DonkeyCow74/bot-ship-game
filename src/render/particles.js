@@ -1,3 +1,5 @@
+import { pigBonusLabel } from '../engine/constants.js';
+
 // Purely visual effects. They never touch the simulation, so they can use Math.random.
 export class Particles {
   constructor() {
@@ -57,7 +59,7 @@ export class Particles {
           break;
         case 'pigEaten':
           this.burst(e.x, e.y, 40, '#ff9ec4', 260, 1, 5);
-          this.text(e.x, e.y - 40, `+25 ${e.stat.toUpperCase()}`, '#ff9ec4');
+          this.text(e.x, e.y - 40, pigBonusLabel(e.stat).toUpperCase(), '#ff9ec4');
           break;
         case 'pigSpawn':
           this.ring(e.x, e.y, 120, '#ff9ec4', 0.8);

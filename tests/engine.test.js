@@ -190,7 +190,7 @@ test('pig gives the chosen upgrade once, then respawns after 60 s', () => {
   assert.ok(w.pig, 'pig respawned');
   me.x = w.pig.x; me.y = w.pig.y;
   step(w, [{ pigStat: 'speed' }, null]);
-  assert.equal(me.maxSpeed, C.MAX_SPEED * (1 + C.PIG_SPEED_BONUS));
+  assert.equal(me.maxSpeed, C.MAX_SPEED + C.MAX_SPEED * C.PIG_SPEED_BONUS);
   me.x = 3000; me.y = 3000;
   w.pigRespawnAt = w.tick + 1;
   step(w, idle(2)); step(w, idle(2));

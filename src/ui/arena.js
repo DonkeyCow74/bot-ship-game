@@ -1,4 +1,4 @@
-import { C } from '../engine/constants.js';
+import { C, pigBonusLabel } from '../engine/constants.js';
 import { seedFromText } from '../engine/rng.js';
 import { LiveMatch, ReplayMatch } from '../match.js';
 import { Renderer } from '../render/renderer.js';
@@ -258,7 +258,7 @@ export class Arena {
         if (e.killer >= 0) this.feed(`${ships[e.killer].name} 💥 ${victim.name}`, ships[e.killer].color);
         else this.feed(`${victim.name} crashed and exploded`, victim.color);
       } else if (e.type === 'pigEaten') {
-        this.feed(`${ships[e.ship].name} ate the pig 🐷 +25 ${e.stat}`, '#ff9ec4');
+        this.feed(`${ships[e.ship].name} ate the pig 🐷 ${pigBonusLabel(e.stat)}`, '#ff9ec4');
       } else if (e.type === 'pigSpawn') {
         this.feed('A new pig appeared in the middle! 🐷', '#ff9ec4');
       } else if (e.type === 'over') {
