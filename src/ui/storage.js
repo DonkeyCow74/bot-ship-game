@@ -1,7 +1,7 @@
 // Bot library: built-in sample bots (from /bots) + your own bots (saved in this browser).
 const KEY = 'shipArena.bots.v1';
 
-export const BUILTIN_FILES = ['bots/hunter.js', 'bots/sniper.js', 'bots/spinner.js'];
+export const BUILTIN_FILES = ['bots/hunter.js', 'bots/sniper.js', 'bots/spinner.js', 'bots/viper.js'];
 export const PALETTE = ['#ff5c5c', '#5cc8ff', '#f7d154', '#7dff6b', '#c77dff', '#ff9f43', '#ff6bcb', '#4dd6b4'];
 
 export const STARTER_CODE = `// Pick 2 weapons: 'gun', 'mine', 'tracker', 'shockwave'
