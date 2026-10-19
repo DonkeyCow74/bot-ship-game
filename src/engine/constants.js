@@ -15,7 +15,7 @@ export const C = Object.freeze({
   ENERGY_REGEN: 14,          // per second (paused while the shield is up)
   THRUST_ACCEL: 320,         // px/s^2 at full thrust
   MAX_SPEED: 360,            // px/s
-  TURN_RATE: 3.6,            // rad/s at full turn
+  TURN_RATE: 5,              // rad/s at full turn
   DRAG: 0.15,                // fraction of velocity lost per second
   SPAWN_RADIUS: 2300,        // ships start on a circle this far from the center
 
@@ -49,7 +49,8 @@ export const C = Object.freeze({
   TRACKER_ARM_TICKS: 30,
   TRACKER_ACCEL: 160,        // px/s^2: starts slow, speeds up
   TRACKER_MAX_SPEED: 460,
-  TRACKER_TURN_RATE: 1.6,    // rad/s (ships turn at 3.6)
+  TRACKER_TURN_RATE: 1.6,    // rad/s (ships turn at 5)
+  TRACKER_HP: 2,             // bullets needed to shoot one down
   TRACKER_TRIGGER_RADIUS: 45,
   TRACKER_BLAST_RADIUS: 170,
   TRACKER_DAMAGE: 35,        // at the center, falls off to half at the edge
@@ -68,6 +69,13 @@ export const C = Object.freeze({
   SHIELD_MIN_ENERGY: 30,     // need this much to raise it (so it lasts at least a moment)
   SHIELD_DRAIN: 20,          // energy per second while it's up
   SHIELD_ARC: (Math.PI * 2) / 3,
+
+  // Boost: an afterburner you hold down. Burns energy for extra forward push and a
+  // higher top speed. No energy regen while it's on.
+  BOOST_ACCEL: 450,          // px/s^2 extra, on top of normal thrust
+  BOOST_SPEED_MULT: 1.5,     // top speed x1.5 while boosting
+  BOOST_DRAIN: 30,           // energy per second
+  BOOST_MIN_ENERGY: 10,      // needed to start boosting (it then runs until energy is gone)
 
   // Dash: a quick burst in any direction
   DASH_COST: 25,             // energy

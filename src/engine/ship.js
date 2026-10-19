@@ -24,6 +24,7 @@ export function createShip(id, entry, x, y, angle) {
     shieldOn: false,
     shieldSide: null,          // 'front' | 'back' while the shield is up
     spinTicks: 0,              // > 0 while spinning out from a shockwave
+    boosting: false,
     spinDir: 1,
     dashTicks: 0,              // > 0 while dashing
     dashCooldown: 0,
@@ -70,6 +71,11 @@ export function controlShip(ship, cmd) {
     ship.vx += cos * a;
     ship.vy += sin * a;
   }
+  ship.boosting = cmd.boost && ship.energy >= (ship.boosting ? 0.001 : C.BOOST_MIN_ENERGY);
+  if (ship.boosting) {
+    ship.vx += cos * C.BOOST_ACCEL * dt;
+    ship.vy += sin * C.BOOST_ACCEL * dt;
+  }
 
   // Dash: bring our speed in the dash direction up to DASH_SPEED (other drift is kept)
   if (ship.dashTicks > 0) ship.dashTicks--;
@@ -92,22 +98,24 @@ export function controlShip(ship, cmd) {
   ship.vx *= drag;
   ship.vy *= drag;
   const speed = Math.hypot(ship.vx, ship.vy);
-  const limit = ship.dashTicks > 0 ? Math.max(C.DASH_SPEED, ship.maxSpeed) : ship.maxSpeed;
+  const top = ship.boosting ? ship.maxSpeed * C.BOOST_SPEED_MULT : ship.maxSpeed;
+  const limit = ship.dashTicks > 0 ? Math.max(C.DASH_SPEED, top) : top;
   if (speed > limit) {
-    // Right after a dash, ease back down to normal top speed instead of stopping dead
+    // After a dash or boost, ease back down to normal top speed instead of stopping dead
     const k = ship.dashTicks > 0 ? limit / speed : Math.max(limit / speed, 0.9);
     ship.vx *= k;
     ship.vy *= k;
   }
 
-  if (ship.shieldOn) {
-    ship.energy -= C.SHIELD_DRAIN * dt;
-    if (ship.energy <= 0) {
-      ship.energy = 0;
-      ship.shieldOn = false;
-      ship.shieldSide = null;
-    }
-  } else {
+  // Shield and boost burn energy; otherwise it regenerates
+  if (ship.shieldOn) ship.energy -= C.SHIELD_DRAIN * dt;
+  if (ship.boosting) ship.energy -= C.BOOST_DRAIN * dt;
+  if (ship.energy <= 0) {
+    ship.energy = 0;
+    ship.shieldOn = false;
+    ship.shieldSide = null;
+  }
+  if (!ship.shieldOn && !ship.boosting) {
     ship.energy = Math.min(ship.maxEnergy, ship.energy + C.ENERGY_REGEN * dt);
   }
 

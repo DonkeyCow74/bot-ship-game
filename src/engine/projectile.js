@@ -2,7 +2,7 @@ import { C } from './constants.js';
 import { segmentCircleEntry } from './vec.js';
 import { damageShip } from './ship.js';
 import { hitAsteroid } from './asteroid.js';
-import { detonateBomb } from './bomb.js';
+import { shootBomb } from './bomb.js';
 
 export function tryFire(world, ship) {
   if (!ship.loadout.includes('gun') || ship.shieldOn || ship.gunCooldown > 0 || ship.energy < C.BULLET_COST) return false;
@@ -62,7 +62,7 @@ export function updateBullets(world) {
       } else if (kind === 'asteroid') {
         hitAsteroid(world, hit);
       } else {
-        detonateBomb(world, hit);
+        shootBomb(world, hit);
       }
       continue;
     }

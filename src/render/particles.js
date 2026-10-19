@@ -66,6 +66,9 @@ export class Particles {
           this.ring(e.x, e.y, e.r * 0.7, '#ffffff', 0.3);
           this.burst(e.x, e.y, 40, '#c9a6ff', e.r * 2.2, 0.45, 3);
           break;
+        case 'trackerHit':
+          this.burst(e.x, e.y, 10, '#ffcf3b', 180, 0.3, 3);
+          break;
         case 'shockHit':
           this.burst(e.x, e.y, 14, '#ffe66b', 200, 0.5, 3);
           break;

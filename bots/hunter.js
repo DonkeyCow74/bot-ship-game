@@ -75,6 +75,8 @@ function think(view, memory) {
     const err = Math.abs(angleDiff(me.angle, aimAngle));
     out.turn = turnToward(me, aimAngle);
     out.thrust = err < 0.6 ? (d > 600 ? 1 : d > 350 ? 0.4 : 0) : 0;
+    // Far away and lined up: burn some energy to close in faster
+    if (err < 0.3 && d > 900 && me.energy > 60) out.boost = true;
 
     // Brawl: with a shockwave charge ready, close in and blast them when in range
     const facing = Math.abs(angleDiff(me.angle, angleTo(me, target))) < 0.5;
@@ -101,9 +103,11 @@ function think(view, memory) {
       const ang = view.tick / 400;
       goal = { x: view.pigZone.x + Math.cos(ang) * 1600, y: view.pigZone.y + Math.sin(ang) * 1600 };
     }
-    const s = steerTo(me, goal.x, goal.y, view.pig ? me.maxSpeed : me.maxSpeed * 0.7);
+    const s = steerTo(me, goal.x, goal.y, view.pig ? me.maxSpeed * 1.5 : me.maxSpeed * 0.7);
     out.turn = s.turn;
     out.thrust = s.thrust;
+    // Race for the pig before anyone else gets it
+    if (view.pig && s.thrust > 0.5 && me.energy > 50 && distance(me, view.pig) > 600) out.boost = true;
     out.debug.push({ type: 'line', x: me.x, y: me.y, x2: goal.x, y2: goal.y, color: '#888' });
   }
 

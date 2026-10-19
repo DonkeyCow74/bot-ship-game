@@ -60,9 +60,10 @@ function think(view, memory) {
     if (hurt) {
       const spot = hidingSpot(view, me, target);
       if (spot) {
-        const s = steerTo(me, spot.x, spot.y, me.maxSpeed);
+        const s = steerTo(me, spot.x, spot.y, me.maxSpeed * 1.5);
         out.turn = s.turn;
         out.thrust = s.thrust;
+        out.boost = s.thrust > 0.5 && me.energy > 30; // get to cover fast
         out.debug.push({ type: 'circle', x: spot.x, y: spot.y, r: 20, color: '#5cc8ff' });
       }
     } else {

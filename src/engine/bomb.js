@@ -24,6 +24,7 @@ function dropBehind(world, ship, kind) {
     bomb.heading = ship.angle + Math.PI; // starts pointing backward, then turns to chase
     bomb.speed = 0;
     bomb.target = -1;
+    bomb.hp = C.TRACKER_HP;
   }
   world.bombs.push(bomb);
   world.events.push({ type: isMine ? 'bombDrop' : 'trackerDrop', x, y, ship: ship.id });
@@ -102,6 +103,15 @@ export function updateBombs(world) {
       }
     }
   }
+}
+
+// A bullet hit: trackers take TRACKER_HP hits, mines go off on the first.
+export function shootBomb(world, bomb) {
+  if (bomb.kind === 'tracker' && --bomb.hp > 0) {
+    world.events.push({ type: 'trackerHit', x: bomb.x, y: bomb.y });
+    return;
+  }
+  detonateBomb(world, bomb);
 }
 
 // Blasts everything nearby, including the bomb's owner. Chains into other bombs.

@@ -54,6 +54,7 @@ Return an object. Every field is optional, and a missing field means "off" or "0
 | Field | Type | What it does |
 |---|---|---|
 | `thrust` | 0 to 1 | Forward engine power. Ships only thrust forward, so to stop you turn around and burn. |
+| `boost` | true/false | Afterburner: hold it for extra push and 1.5× top speed. It burns energy while it's on. |
 | `turn` | -1 to 1 | Turn speed. Positive turns clockwise on screen (angle goes up), negative turns counter-clockwise. |
 | `fire` | true/false | Shoot the gun (if it's in your loadout). It costs energy, has a cooldown, and doesn't work while your shield is up. |
 | `mine` | true/false | Drop a mine behind you (if it's in your loadout). `bomb: true` also works. |
@@ -85,6 +86,7 @@ Coordinates are in pixels. `x` goes right and `y` goes **down**. Angles are radi
 | `weaponCooldown` | Ticks until each charge weapon can be used again |
 | `gunCooldown` | Ticks until you can shoot again |
 | `shieldOn, shieldSide` | Is your shield up, and which side (`'front'`/`'back'`, or `null`)? |
+| `boosting` | Is your afterburner on? |
 | `spinning` | Are you spinning out from a shockwave? (Steering doesn't work until it stops.) |
 | `dashing, dashCooldown` | Are you mid-dash? How many ticks until you can dash again? |
 | `upgrades` | `{hp, energy, speed}`: how many pigs you've spent on each |
@@ -92,7 +94,7 @@ Coordinates are in pixels. `x` goes right and `y` goes **down**. Angles are radi
 
 ### `view.enemies`: ships you can see
 
-Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, dashing, spinning, loadout, upgrades}`.
+Your sensors reach **1500 px**, and asteroids block line of sight. You only see an enemy if it's in range **and** the straight line from you to its center doesn't touch an asteroid. Each enemy is `{id, name, x, y, vx, vy, angle, hp, maxHp, shieldOn, shieldSide, dashing, boosting, spinning, loadout, upgrades}`.
 
 > Enemies you can't see simply aren't in the list. Use `memory` to remember where you last saw someone.
 
@@ -102,7 +104,7 @@ Your sensors reach **1500 px**, and asteroids block line of sight. You only see 
 |---|---|
 | `view.asteroids` | Every asteroid within sensor range (radar sees through rock): `{id, x, y, vx, vy, radius, size, hitsLeft}`. `size` is 2 for large, 1 for medium and 0 for small. |
 | `view.bullets` | Bullets you can see: `{x, y, vx, vy, own, ticksLeft}`. `own` is true for yours (`mine` also works). |
-| `view.bombs` | Mines and trackers: `{kind, own, x, y, vx, vy, armed, ticksUntilFuse}`. `kind` is `'mine'` or `'tracker'`, and `own` is true for yours. Trackers also have `heading`, `speed`, and `chasingMe`. You always see your own. Enemy trackers show up like ships (in range and in line of sight), but enemy mines are stealthy: you only see them within **600 px**. |
+| `view.bombs` | Mines and trackers: `{kind, own, x, y, vx, vy, armed, ticksUntilFuse}`. `kind` is `'mine'` or `'tracker'`, and `own` is true for yours. Trackers also have `heading`, `speed`, `chasingMe`, and `hp` (bullets left to destroy it). You always see your own. Enemy trackers show up like ships (in range and in line of sight), but enemy mines are stealthy: you only see them within **600 px**. |
 | `view.pig` | `{x, y, vx, vy}` when a pig is out, otherwise `null`. Everyone can always see the pig. |
 | `view.pigRespawnIn` | Ticks until the next pig (0 if one is out right now) |
 | `view.pigZone` | `{x, y, radius}`: the open circle in the middle with no asteroids |
@@ -157,14 +159,15 @@ debug: [
 ## The rules
 
 ### Ships
-- 100 HP, 100 energy. Energy regenerates at 14/s, but not while the shield is up.
-- Space has a little drag (you slowly coast to a stop). Top speed is 360 px/s.
+- 100 HP, 100 energy. Energy regenerates at 14/s, but not while the shield or boost is on.
+- Space has a little drag (you slowly coast to a stop). Top speed is 360 px/s (540 while boosting).
+- Ships turn at up to 5 radians per second, about a full circle in 1.3 seconds.
 - Ramming walls, asteroids or other ships hurts if you hit faster than 120 px/s, and the faster you hit the more it hurts. In ship-vs-ship crashes, both ships take damage.
 
 ### 🔫 Gun
 - Bullets fly at 720 px/s **plus your ship's velocity**, go up to 1400 px, and do 6 damage.
 - Each shot costs 10 energy. You can shoot up to about 4 times a second.
-- Bullets hit asteroids, ships, mines and trackers. Shooting a mine or tracker sets it off.
+- Bullets hit asteroids, ships, mines and trackers. One bullet sets off a mine, and a tracker takes two.
 
 ### 💣 Mine
 - It drops behind you and drifts to a stop. It **arms after 1 second**. After that, an enemy ship within 130 px sets it off, and it explodes by itself after 20 seconds.
@@ -173,9 +176,9 @@ debug: [
 
 ### 🚀 Tracker
 - It drops behind you. After **1 second** it locks onto the **nearest enemy** and chases it. If that enemy dies, it picks a new one.
-- It **starts slow and speeds up** (up to 460 px/s, faster than a normal ship), but it **turns slowly**, so sharp turns and dashes can shake it off. Make it run into an asteroid!
+- It **starts slow and speeds up** (up to 460 px/s, faster than a normal ship), but it **turns slowly** (about a third as fast as a ship), so sharp turns and dashes can shake it off. Make it run into an asteroid!
 - It explodes when it gets within 45 px of an enemy, or when it hits an asteroid or a wall. The blast is 170 px for up to **35 damage**, and like a mine it hurts everyone in range.
-- **Shoot it to blow it up early.** It explodes by itself 15 seconds after it was dropped.
+- **It takes 2 bullets to shoot down.** The second one blows it up where it is. It explodes by itself 15 seconds after it was dropped.
 
 ### 💥 Shockwave
 - A blast all around you, reaching ships within **220 px** of you.
@@ -188,6 +191,12 @@ debug: [
 - **Raising it costs 20 energy up front**, then 20 energy/s while it's up. You need at least 30 energy to raise it, so use it wisely. Holding the shield button down nonstop just burns energy. Flipping it between front and back while it's up is free.
 - While it's up you can't shoot or regenerate energy. It drops when energy hits 0.
 - Enemies can see your shield and which side it's on (`enemy.shieldOn`, `enemy.shieldSide`). Hit them from the other side!
+
+### Boost
+- Hold `boost: true` for an afterburner: extra forward push on top of your thrust, and **1.5× top speed** while it's on.
+- It burns **30 energy/s**, and you don't regenerate energy while boosting. You need at least 10 energy to start, then it runs until you let go or run dry.
+- When you stop, you ease back down to normal top speed.
+- Unlike the dash, it lasts as long as you have energy, but only pushes the way your nose points.
 
 ### Dash
 - It bursts you to **750 px/s** (about twice top speed) for 0.3 s in **any direction**, then you ease back to normal speed.

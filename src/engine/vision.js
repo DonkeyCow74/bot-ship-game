@@ -29,7 +29,7 @@ export function getView(world, shipId) {
       id: s.id, name: s.name,
       x: r1(s.x), y: r1(s.y), vx: r1(s.vx), vy: r1(s.vy), angle: s.angle,
       hp: r1(s.hp), maxHp: s.maxHp, shieldOn: s.shieldOn, shieldSide: s.shieldSide,
-      dashing: s.dashTicks > 0, spinning: s.spinTicks > 0,
+      dashing: s.dashTicks > 0, spinning: s.spinTicks > 0, boosting: s.boosting,
       loadout: [...s.loadout],
       upgrades: { ...s.upgrades },
     });
@@ -71,6 +71,7 @@ export function getView(world, shipId) {
       view.heading = b.heading;
       view.speed = r1(b.speed);
       view.chasingMe = b.target === me.id;
+      view.hp = b.hp;
     }
     bombs.push(view);
   }
@@ -91,7 +92,7 @@ export function getView(world, shipId) {
       weaponCooldown: { ...me.weaponCooldown },
       gunCooldown: me.gunCooldown,
       shieldOn: me.shieldOn, shieldSide: me.shieldSide,
-      dashing: me.dashTicks > 0, dashCooldown: me.dashCooldown, spinning: me.spinTicks > 0,
+      dashing: me.dashTicks > 0, dashCooldown: me.dashCooldown, spinning: me.spinTicks > 0, boosting: me.boosting,
       upgrades: { ...me.upgrades },
     },
     enemies,

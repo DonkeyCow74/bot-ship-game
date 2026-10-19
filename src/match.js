@@ -3,7 +3,7 @@ import { createWorld, getView, step, sanitizeCommand, encodeCommand, decodeComma
 import { normalizeLoadout } from './engine/constants.js';
 import { BotRunner } from './bots/botRunner.js';
 
-export const REPLAY_VERSION = 5; // 5: weapon loadouts (gun, mine, tracker, shockwave)
+export const REPLAY_VERSION = 6; // 5: weapon loadouts, 6: boost
 
 export class LiveMatch {
   // entries: [{name, color, code}]

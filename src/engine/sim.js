@@ -12,7 +12,7 @@ export { createWorld } from './world.js';
 export { getView, hasLineOfSight } from './vision.js';
 
 const IDLE = Object.freeze({
-  thrust: 0, turn: 0, fire: false, mine: false, tracker: false, shockwave: false, shield: false, dash: false, pigStat: 'hp',
+  thrust: 0, turn: 0, boost: false, fire: false, mine: false, tracker: false, shockwave: false, shield: false, dash: false, pigStat: 'hp',
 });
 
 function num(v, lo, hi) {
@@ -28,6 +28,7 @@ export function sanitizeCommand(c) {
   return {
     thrust: num(c.thrust, 0, 1),
     turn: num(c.turn, -1, 1),
+    boost: !!c.boost,
     fire: !!c.fire,
     mine: !!(c.mine || c.bomb), // 'bomb' is the old name for a mine
     tracker: !!c.tracker,
@@ -53,7 +54,7 @@ function sanitizeDash(d) {
 // Compact form for replays: [thrust, turn, flags, dashAngle?]
 export function encodeCommand(c) {
   const flags = (c.fire ? 1 : 0) | (c.mine ? 2 : 0) | (SHIELDS.indexOf(c.shield) << 2) | (PIG_STATS.indexOf(c.pigStat) << 4) |
-    (c.tracker ? 64 : 0) | (dashCode(c.dash) << 7) | (c.shockwave ? 1024 : 0);
+    (c.tracker ? 64 : 0) | (dashCode(c.dash) << 7) | (c.shockwave ? 1024 : 0) | (c.boost ? 2048 : 0);
   return typeof c.dash === 'number' ? [c.thrust, c.turn, flags, c.dash] : [c.thrust, c.turn, flags];
 }
 
@@ -68,7 +69,7 @@ export function decodeCommand(e) {
   const dash = (flags >> 7) & 7;
   return {
     thrust, turn,
-    fire: !!(flags & 1), mine: !!(flags & 2), tracker: !!(flags & 64), shockwave: !!(flags & 1024), shield: SHIELDS[(flags >> 2) & 3] || false,
+    fire: !!(flags & 1), mine: !!(flags & 2), tracker: !!(flags & 64), shockwave: !!(flags & 1024), boost: !!(flags & 2048), shield: SHIELDS[(flags >> 2) & 3] || false,
     dash: dash === 5 ? angle : dash ? DASH_DIRS[dash - 1] : false,
     pigStat: PIG_STATS[(flags >> 4) & 3] || 'hp',
   };

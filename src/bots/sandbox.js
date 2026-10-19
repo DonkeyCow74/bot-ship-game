@@ -84,6 +84,7 @@ const cleanCmd = (c) => {
   return {
     thrust: Number(c.thrust) || 0,
     turn: Number(c.turn) || 0,
+    boost: !!c.boost,
     fire: !!c.fire, mine: !!(c.mine || c.bomb), tracker: !!c.tracker, shockwave: !!c.shockwave,
     shield: c.shield === 'back' ? 'back' : c.shield ? 'front' : false,
     dash: typeof c.dash === 'number' || typeof c.dash === 'string' ? c.dash : !!c.dash,

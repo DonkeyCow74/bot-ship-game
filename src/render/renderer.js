@@ -306,8 +306,24 @@ export class Renderer {
       g.translate(x, y);
       g.rotate(ang);
       g.scale(k, k);
-      if (s.lastCmd?.thrust > 0) {
-        const len = R * (0.8 + s.lastCmd.thrust * 0.9 + Math.random() * 0.3);
+      if (s.boosting) {
+        // Afterburner: a long blue flame behind the normal one
+        const len = R * (3.6 + Math.random() * 1.2);
+        g.fillStyle = 'rgba(90, 190, 255, 0.9)';
+        g.beginPath();
+        g.moveTo(-R * 0.6, -R * 0.75);
+        g.lineTo(-R * 0.7 - len, 0);
+        g.lineTo(-R * 0.6, R * 0.75);
+        g.fill();
+        g.fillStyle = 'rgba(230, 248, 255, 0.95)';
+        g.beginPath();
+        g.moveTo(-R * 0.6, -R * 0.3);
+        g.lineTo(-R * 0.7 - len * 0.6, 0);
+        g.lineTo(-R * 0.6, R * 0.3);
+        g.fill();
+      }
+      if (s.lastCmd?.thrust > 0 || s.boosting) {
+        const len = R * (0.8 + (s.boosting ? 1 : s.lastCmd.thrust) * 0.9 + Math.random() * 0.3);
         g.fillStyle = '#ffae3b';
         g.beginPath();
         g.moveTo(-R * 0.7, -R * 0.35);

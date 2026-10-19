@@ -260,7 +260,13 @@ test('trackers can be shot down', () => {
   me.x = 3000; me.y = 3000; me.angle = Math.PI; // drops it to the east (behind)
   them.x = 3600; them.y = 3000; them.angle = Math.PI; them.vx = them.vy = 0; // facing west, at it
   step(w, [{ tracker: true }, null]);
-  for (let i = 0; i < 40 && w.bombs.length; i++) { them.x = 3600; them.vx = 0; step(w, [null, { fire: true }]); }
+  let hitOnce = false;
+  for (let i = 0; i < 60 && w.bombs.length; i++) {
+    them.x = 3600; them.vx = 0;
+    step(w, [null, { fire: true }]);
+    if (w.bombs[0]?.hp === C.TRACKER_HP - 1) hitOnce = true;
+  }
+  assert.ok(hitOnce, 'survived the first bullet');
   assert.equal(w.bombs.length, 0);
   assert.equal(them.hp, C.SHIP_HP, 'blew up away from them');
 });
@@ -298,6 +304,25 @@ test('dash commands survive replay encoding', () => {
     const c = sanitizeCommand({ dash, tracker: true, shockwave: true, mine: true });
     assert.deepEqual(decodeCommand(encodeCommand(c)), c);
   }
+});
+
+test('boost: faster top speed, burns energy, no regen', () => {
+  const w = emptyWorld();
+  const me = w.ships[0];
+  me.x = 500; me.y = 3000; me.angle = 0; me.vx = me.vy = 0;
+  for (let i = 0; i < 60; i++) step(w, [{ thrust: 1, boost: true }, null]);
+  assert.ok(me.vx > C.MAX_SPEED * 1.2, `boosted speed ${me.vx}`);
+  assert.ok(me.vx <= C.MAX_SPEED * C.BOOST_SPEED_MULT + 1);
+  assert.ok(Math.abs(me.energy - (C.SHIP_ENERGY - C.BOOST_DRAIN * 2)) < 1, `energy ${me.energy}`);
+  // Out of energy: holding boost only gives short bursts each time 10 energy builds up
+  for (let i = 0; i < 120; i++) { me.x = 500; step(w, [{ thrust: 1, boost: true }, null]); }
+  let on = 0;
+  for (let i = 0; i < 90; i++) { me.x = 500; step(w, [{ thrust: 1, boost: true }, null]); if (me.boosting) on++; }
+  assert.ok(on > 0 && on < 45, `boosting ${on} of 90 ticks while empty`);
+  // Let go: speed eases back down to normal
+  for (let i = 0; i < 30; i++) { me.x = 500; step(w, [{ thrust: 1 }, null]); }
+  assert.ok(!me.boosting);
+  assert.ok(Math.hypot(me.vx, me.vy) <= C.MAX_SPEED + 1);
 });
 
 test('pig zone stays clear of asteroids', () => {
@@ -345,7 +370,7 @@ test('pig gives the chosen upgrade once, then respawns after 30 s', () => {
 
 test('bad commands are sanitized', () => {
   assert.deepEqual(sanitizeCommand({ thrust: 99, turn: -Infinity, fire: 'yes', pigStat: 'lasers' }),
-    { thrust: 1, turn: 0, fire: true, mine: false, tracker: false, shockwave: false, shield: false, dash: false, pigStat: 'hp' });
+    { thrust: 1, turn: 0, boost: false, fire: true, mine: false, tracker: false, shockwave: false, shield: false, dash: false, pigStat: 'hp' });
   assert.equal(sanitizeCommand({ bomb: true }).mine, true, 'old name still works');
   assert.equal(sanitizeCommand({ shield: 'back' }).shield, 'back');
   assert.equal(sanitizeCommand({ shield: 'sideways' }).shield, 'front');
