@@ -247,4 +247,5 @@ The game is a plain static website with no build step and no server code.
 - **Play locally:** in the game folder run `python3 -m http.server`, then open http://localhost:8000
 - **Quick fights in the terminal:** `node tools/fight.js bots/hunter.js my-bot.js --rounds 20` (Node 18+). It runs without the sandbox, so only use it on bots you trust.
 - **Tests:** `npm test`
+- **Adding a bot to the site for everyone:** put the `.js` file in the `bots/` folder on GitHub, then add its file name to the list in `bots/index.json`. Start the file with `// @name Your Bot` and `// @color #ff9f43` to set how it shows up.
 - **Hosting:** copy the whole folder to any web host (for example `ruybalid.com/ships/`). All paths are relative.

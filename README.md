@@ -34,6 +34,29 @@ index.html  css/  src/  bots/  docs/
 
 Bots people write are saved in their own browser (localStorage). They share bots by link or by `.js` file, so the server never stores anything.
 
+## Adding a bot to the site
+
+To make a bot show up for everyone:
+
+1. Put the bot's `.js` file in the `bots/` folder. On GitHub, open `bots/` and use **Add file → Upload files**.
+2. Add its file name to `bots/index.json`, which is a plain list:
+   ```json
+   [
+     "hunter.js",
+     "my-new-bot.js"
+   ]
+   ```
+   Every name needs quotes, and every line except the last needs a comma after it.
+3. Commit. About a minute later the bot appears under "Sample bots" in the game.
+
+To control how a bot shows up in the menus, start the file with these lines:
+```js
+// @name My New Bot
+// @color #ff9f43
+```
+
+To try a bot without adding it to the site, use **Upload .js** in the Bot Lab instead. It's saved only in your browser.
+
 ## Developing
 
 ```sh

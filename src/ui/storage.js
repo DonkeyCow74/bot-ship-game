@@ -1,7 +1,10 @@
 // Bot library: built-in sample bots (from /bots) + your own bots (saved in this browser).
 const KEY = 'shipArena.bots.v1';
 
-export const BUILTIN_FILES = ['bots/hunter.js', 'bots/sniper.js', 'bots/spinner.js', 'bots/viper.js'];
+// The bots everyone sees are listed in bots/index.json. To add one to the site: put the
+// .js file in bots/ and add its file name to that list.
+const MANIFEST = 'bots/index.json';
+const FALLBACK_FILES = ['hunter.js', 'sniper.js', 'spinner.js'];
 export const PALETTE = ['#ff5c5c', '#5cc8ff', '#f7d154', '#7dff6b', '#c77dff', '#ff9f43', '#ff6bcb', '#4dd6b4'];
 
 export const STARTER_CODE = `// Pick 2 weapons: 'gun', 'mine', 'tracker', 'shockwave'
@@ -59,12 +62,28 @@ export class BotStore {
   }
 
   async load() {
-    this.builtins = await Promise.all(BUILTIN_FILES.map(async (file, i) => {
-      const res = await fetch(file);
-      const code = await res.text();
-      const meta = parseMeta(code);
-      return { id: 'builtin:' + file, name: meta.name || file, color: meta.color || PALETTE[i], code, builtin: true };
+    let files = FALLBACK_FILES;
+    try {
+      const list = await (await fetch(MANIFEST, { cache: 'no-cache' })).json();
+      if (Array.isArray(list) && list.length) files = list.filter((f) => typeof f === 'string');
+    } catch (err) {
+      console.warn(`Could not read ${MANIFEST}, using the default bots.`, err);
+    }
+    // One missing or broken file shouldn't take the whole site down: skip it
+    const loaded = await Promise.all(files.map(async (name, i) => {
+      const file = 'bots/' + name.replace(/^bots\//, '');
+      try {
+        const res = await fetch(file, { cache: 'no-cache' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const code = await res.text();
+        const meta = parseMeta(code);
+        return { id: 'builtin:' + file, name: meta.name || name.replace(/\.js$/, ''), color: meta.color || PALETTE[i % PALETTE.length], code, builtin: true };
+      } catch (err) {
+        console.warn(`Skipping ${file} listed in ${MANIFEST}:`, err.message);
+        return null;
+      }
     }));
+    this.builtins = loaded.filter(Boolean);
     try {
       const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
       this.user = Array.isArray(raw) ? raw.filter((b) => b && typeof b.code === 'string') : [];

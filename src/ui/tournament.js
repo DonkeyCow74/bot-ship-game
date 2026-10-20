@@ -43,7 +43,7 @@ export class Tournament {
     const checked = new Set([...wrap.querySelectorAll('input:checked')].map((i) => i.value));
     const first = !wrap.children.length;
     wrap.replaceChildren(...this.store.all().map((b) => el('label', { class: 'check' },
-      el('input', { type: 'checkbox', value: b.id, checked: checked.has(b.id) || (first && b.builtin && !b.name.includes('Spinner')) }),
+      el('input', { type: 'checkbox', value: b.id, checked: checked.has(b.id) || (first && this.store.builtins.indexOf(b) >= 0 && this.store.builtins.indexOf(b) < 2) }),
       el('span', { class: 'dot', style: `background:${b.color}` }), b.name)));
   }
 

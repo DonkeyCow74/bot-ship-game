@@ -388,3 +388,13 @@ test('sample bots finish full matches', () => {
   const w = runLocalMatch({ seed: 42, bots: [bot('hunter'), bot('sniper'), bot('spinner')] });
   assert.ok(w.over);
 });
+
+test('every bot listed in bots/index.json exists and compiles', async () => {
+  const { compileBot } = await import('../src/bots/localRunner.js');
+  const list = JSON.parse(readFileSync(new URL('../bots/index.json', import.meta.url), 'utf8'));
+  assert.ok(Array.isArray(list) && list.length);
+  for (const name of list) {
+    const code = readFileSync(new URL(`../bots/${name}`, import.meta.url), 'utf8');
+    assert.doesNotThrow(() => compileBot(code), name);
+  }
+});
